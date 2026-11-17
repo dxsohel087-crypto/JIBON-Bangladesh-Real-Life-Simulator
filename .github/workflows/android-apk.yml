@@ -76,7 +76,9 @@ jobs:
         run: |
           test -s GodotProject/build/android/JIBON-RUNNER.apk
           ls -lh GodotProject/build/android/JIBON-RUNNER.apk
-          file GodotProject/build/android/JIBON-RUNNER.apk
+          unzip -t GodotProject/build/android/JIBON-RUNNER.apk
+          apksigner verify --verbose GodotProject/build/android/JIBON-RUNNER.apk
+          sha256sum GodotProject/build/android/JIBON-RUNNER.apk
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
