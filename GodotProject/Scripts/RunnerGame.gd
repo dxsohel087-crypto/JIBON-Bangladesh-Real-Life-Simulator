@@ -21,6 +21,11 @@ var total_coins := 0
 var pause_button: Button
 var pause_overlay: ColorRect
 var best_label: Label
+var left_arm: MeshInstance3D
+var right_arm: MeshInstance3D
+var left_leg: MeshInstance3D
+var right_leg: MeshInstance3D
+var run_clock := 0.0
 var swipe_start := Vector2.ZERO
 var segments: Array[Node3D] = []
 var coin_nodes: Array[Area3D] = []
@@ -56,6 +61,7 @@ func _process(delta: float) -> void:
 	_update_hud()
 
 func _update_player_actions(delta: float) -> void:
+	run_clock += delta * 12.0
 	if jump_time > 0.0:
 		jump_time = maxf(0.0, jump_time - delta)
 		var progress := 1.0 - jump_time / 0.58
@@ -67,6 +73,11 @@ func _update_player_actions(delta: float) -> void:
 		player.scale.y = 0.55
 	else:
 		player.scale.y = 1.0
+	var swing := sin(run_clock) * (0.48 if jump_time <= 0.0 and slide_time <= 0.0 else 0.12)
+	left_arm.rotation.x = swing
+	right_arm.rotation.x = -swing
+	left_leg.rotation.x = -swing
+	right_leg.rotation.x = swing
 
 func _unhandled_input(event: InputEvent) -> void:
 	if game_over or paused:
@@ -145,6 +156,24 @@ func _build_player() -> void:
 	skin.albedo_color = Color(0.72, 0.48, 0.32)
 	head.material_override = skin
 	player.add_child(head)
+
+	left_arm = _make_limb(Vector3(0.48, 0.18, 0), 0.14, 0.72, Color(0.1, 0.22, 0.62))
+	right_arm = _make_limb(Vector3(-0.48, 0.18, 0), 0.14, 0.72, Color(0.1, 0.22, 0.62))
+	left_leg = _make_limb(Vector3(0.2, -0.68, 0), 0.16, 0.72, Color(0.08, 0.08, 0.1))
+	right_leg = _make_limb(Vector3(-0.2, -0.68, 0), 0.16, 0.72, Color(0.08, 0.08, 0.1))
+
+func _make_limb(pos: Vector3, radius: float, height: float, color: Color) -> MeshInstance3D:
+	var limb := MeshInstance3D.new()
+	var shape := CapsuleMesh.new()
+	shape.radius = radius
+	shape.height = height
+	limb.mesh = shape
+	limb.position = pos
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color
+	limb.material_override = mat
+	player.add_child(limb)
+	return limb
 
 func _build_camera() -> void:
 	camera = Camera3D.new()
