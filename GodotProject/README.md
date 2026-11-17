@@ -1,27 +1,28 @@
 # JIBON RUNNER — Godot 4.4.1
 
-বাংলাদেশের গ্রাম, রাস্তা ও মাঠের আবহে তৈরি 3D endless-runner গেমের চলমান প্রোটোটাইপ।
+বাংলাদেশের গ্রাম, ধানক্ষেত, বাজার ও রাস্তার আবহে তৈরি 3D endless-runner গেম।
 
-## চালানো
+## চালানো ও নিয়ন্ত্রণ
 Godot 4.4.1 দিয়ে `GodotProject` ফোল্ডার খুলে `Scenes/Main.tscn` চালান।
-
-## নিয়ন্ত্রণ
-- মোবাইল: বামে/ডানে swipe করে lane বদল; ওপরের দিকে swipe = jump; নিচে swipe = slide।
+- মোবাইল: বামে/ডানে swipe = lane বদল; ওপরের দিকে swipe = jump; নিচের দিকে swipe = slide।
 - কম্পিউটার: Left/Right বা A/D = lane; Up/W/Space = jump; Down/S = slide; P = pause।
-- Pause menu থেকে খেলা চালিয়ে যাওয়া বা নতুন করে শুরু করা যায়।
-- Game Over হলে menu-এর Restart বোতাম ব্যবহার করুন।
+- Pause menu থেকে খেলা চালিয়ে যাওয়া, নতুন করে শুরু, পোশাকের দোকান, মিশন ও দৈনিক পুরস্কার ব্যবহার করা যায়।
 
-## বর্তমানে থাকা ফিচার
-- 3D তিন-lane endless runner, camera follow, procedural road।
-- সবুজ ধানক্ষেতের আবহ, গাছ ও সাধারণ গ্রামের বাড়ি।
-- swipe controls, jump/slide, coin pickup, obstacle collision।
-- Score, distance, current coins, best score ও lifetime coin counter।
-- Pause/resume/restart menu ও ৫/১০/১৫/২০ কিমিতে একবার করে খাবার/পানি/বিশ্রামের বিরতি।
-- দৌড়ানোর সময় হাত-পায়ের procedural swing animation।
-- Best score ও মোট কয়েন user://jibon_runner_save.cfg-এ সংরক্ষণ।
+## বর্তমান প্রোটোটাইপে
+- 3D তিন-lane endless runner, camera follow, procedural road ও coin collection।
+- বাংলাদেশের ধানক্ষেত, সেচের নালা, গাছ, গ্রামের বাড়ি, রাস্তার বাজারের স্টল ও পুকুরের দৃশ্য।
+- বিভিন্ন road barrier, কাঠের বাক্স ও হাতগাড়ি ধরনের বাধা।
+- Jump/slide, swipe controls, score, distance, pause, restart ও Game Over।
+- দৌড়ানোর সময় হাত-পায়ের swing animation।
+- দিন-রাতের আলো পরিবর্তন।
+- ৫/১০/১৫/২০ কিমিতে বিরতি; বিরতির সময় 3D রাস্তার খাবারের দোকান/বসার জায়গা দেখা যায়।
+- ১ কিমি ও ২০ কয়েনের মিশন অগ্রগতি।
+- দৈনিক ৫০ কয়েন পুরস্কার (ডিভাইসের স্থানীয় তারিখ অনুযায়ী একবার)।
+- ১০০ কয়েনে চরিত্রের পোশাকের রং পরিবর্তন।
+- Best score, কয়েন, পোশাক ও দৈনিক পুরস্কারের তথ্য স্থানীয় save file-এ রাখা হয়।
 
-## এখনো বাকি
-বাস্তবসম্মত character model/animation, বাংলাদেশি যানবাহন ও বিভিন্ন অঞ্চল, sound/music, আলাদা 3D breakfast/food/rest location ও interactive food gameplay, main menu, cosmetic shop, missions, daily rewards, day/night/weather cycle, আরও obstacle/coin pattern, accessibility/settings, performance profiling এবং বাস্তব Android device testing।
+## এখনো উন্নয়নের কাজ
+এটি এখনো প্রাথমিক playable prototype, সম্পূর্ণ বাণিজ্যিক মানের গেম নয়। উন্নত human 3D character model/rig, বাস্তব animation, animated rickshaw/bus/train traffic, বড় শহর ও flyover levels, rain/fog weather, sound/music, উন্নত menu/settings, আরও missions/skins, accessibility, performance profiling এবং বিভিন্ন Android ফোনে বাস্তব device testing বাকি।
 
 ## Android build
-GitHub Actions-এর JIBON RUNNER Android APK workflow APK export ও verify করে। সফল run-এর Artifacts অংশ থেকে APK ZIP ডাউনলোড করা যাবে।
+GitHub Actions-এর `JIBON RUNNER Android APK` workflow APK export ও verify করে। সফল run-এর Artifacts অংশ থেকে APK ZIP ডাউনলোড করা যাবে।
