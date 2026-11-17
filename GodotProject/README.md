@@ -1,19 +1,23 @@
-# JIBON RUNNER — Godot project
+# JIBON RUNNER — Godot 4 project
 
-This is the Godot 4.4 project path for the Bangladesh-inspired 3D endless runner.
+বাংলাদেশের গ্রাম, রাস্তা ও মাঠের আবহে তৈরি 3D endless-runner গেমের প্রাথমিক সংস্করণ।
 
-## Open / run
-Open this folder in Godot 4.4 or newer and run `Scenes/Main.tscn`.
-The first prototype uses built-in 3D primitives so it has no external asset dependencies.
+## চালানো
+Godot 4.4.1 দিয়ে `GodotProject` ফোল্ডার খুলে `Scenes/Main.tscn` চালান।
 
-## Controls
-- Keyboard: Left/Right or A/D to change lane; Up/W/Space to jump; Down/S to slide.
-- Touch: swipe left/right/up/down.
+## নিয়ন্ত্রণ
+- মোবাইল: বামে/ডানে swipe করে lane বদল; ওপরের দিকে swipe করলে jump; নিচে swipe করলে slide।
+- কম্পিউটার: Left/Right বা A/D = lane; Up/W/Space = jump; Down/S = slide।
+- Game Over হলে স্ক্রিনে টাচ বা Enter/Space চাপলে নতুন করে শুরু হবে।
 
-## Current prototype scope
-- Three-lane forward runner, simple touch/keyboard controls, score and coins.
-- Procedural road segments, green fields, roadside trees and simple village houses.
-- Obstacle collision and restart by tapping after game over.
+## এই সংস্করণে
+- তিনটি lane, সামনের দিকে চলা runner, camera follow।
+- procedural রাস্তা, সবুজ মাঠ, গাছ ও সাধারণ গ্রামের বাড়ি।
+- swipe direction সংশোধন, jump/slide state, coin pickup ও obstacle collision-এর নিজস্ব distance check।
+- score, coin ও distance HUD; Game Over/restart।
 
-## Important
-This is an early playable foundation, not the completed game. Detailed character models, animations, vehicles, authentic Bangladesh assets, sound, food-break scenes, menus, saving, Android export configuration and device testing remain to be implemented.
+## এখনো সম্পূর্ণ হয়নি
+এটি পরীক্ষামূলক playable foundation, পূর্ণাঙ্গ গেম নয়। বাস্তবসম্মত character model/animation, বাংলাদেশি যানবাহন ও লোকেশন, sound/music, breakfast/food/rest break scenes, main menu, shop, missions, daily rewards, save system, weather/day-night cycle এবং বাস্তব Android device testing এখনো বাকি। ৫/১০/১৫/২০ কিমি HUD-এ milestone দেখায়, কিন্তু এখনো আলাদা food-break gameplay নেই।
+
+## Android build
+GitHub Actions-এর `JIBON RUNNER Android APK` workflow APK export করে এবং artifact হিসেবে আপলোড করে। সফল workflow run-এর Artifacts অংশ থেকে APK নামানো যাবে।
