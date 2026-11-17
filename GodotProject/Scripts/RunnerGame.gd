@@ -59,6 +59,7 @@ var traffic_wheels: Array[MeshInstance3D] = []
 var traffic_clock := 0.0
 var coin_audio: AudioStreamPlayer
 var crash_audio: AudioStreamPlayer
+var train_nodes: Array[Node3D] = []
 
 func _ready() -> void:
 	randomize()
@@ -78,6 +79,7 @@ func _process(delta: float) -> void:
 	distance_m += FORWARD_SPEED * delta
 	_update_day_night(delta)
 	_update_traffic(delta)
+	_update_trains(delta)
 	_check_distance_breaks()
 	if paused:
 		return
@@ -432,6 +434,41 @@ func _update_traffic(delta: float) -> void:
 		if is_instance_valid(wheel):
 			wheel.rotation.x += delta * 5.5
 
+func _add_train_crossing(segment: Node3D) -> void:
+	# Twin rails and sleepers cross the far end of the roadside scene.
+	for rail_z in [-12.55, -11.45]:
+		_box(segment, Vector3(28.0, 0.12, 0.12), Vector3(0, 0.12, rail_z), Color(0.24, 0.25, 0.27))
+	for sleeper in range(18):
+		_box(segment, Vector3(0.22, 0.10, 1.65), Vector3(-13.0 + float(sleeper) * 1.52, 0.08, -12.0), Color(0.30, 0.20, 0.13))
+	var train := Node3D.new()
+	train.name = "MovingPassengerTrain"
+	for carriage in range(3):
+		var offset := -float(carriage) * 3.0
+		var body_color := Color(0.12, 0.42, 0.32) if carriage == 0 else Color(0.78, 0.78, 0.72)
+		_box(train, Vector3(2.8, 1.05, 0.95), Vector3(offset, 0.92, 0), body_color)
+		_box(train, Vector3(2.25, 0.38, 0.08), Vector3(offset, 1.18, -0.50), Color(0.20, 0.48, 0.62))
+		for wheel_x in [offset - 0.82, offset + 0.82]:
+			var wheel := MeshInstance3D.new()
+			var wheel_mesh := CylinderMesh.new()
+			wheel_mesh.top_radius = 0.20
+			wheel_mesh.bottom_radius = 0.20
+			wheel_mesh.height = 0.14
+			wheel.mesh = wheel_mesh
+			wheel.position = Vector3(wheel_x, 0.30, 0)
+			wheel.rotation_degrees.z = 90.0
+			train.add_child(wheel)
+	_box(train, Vector3(0.75, 0.52, 0.82), Vector3(1.05, 1.55, 0), Color(0.12, 0.42, 0.32))
+	segment.add_child(train)
+	train.position = Vector3(-14.0, 0.0, -12.0)
+	train_nodes.append(train)
+
+func _update_trains(delta: float) -> void:
+	for train in train_nodes.duplicate():
+		if not is_instance_valid(train):
+			train_nodes.erase(train)
+			continue
+		train.position.x = -14.0 + fposmod(traffic_clock * 5.0 + float(train.get_instance_id() % 17), 28.0)
+
 func _add_segment(z_pos: float) -> void:
 	var segment := Node3D.new()
 	segment.position.z = z_pos
@@ -492,9 +529,10 @@ func _add_field_props(segment: Node3D, z_pos: float) -> void:
 			for post_x in [-1.25, 1.25]:
 				_box(segment, Vector3(0.10, 2.0, 0.10), Vector3(x + post_x, 1.0, -11.0), Color(0.25, 0.18, 0.1))
 	elif zone == 3:
-		# Pond and a simple concrete culvert
+		# Pond, culvert and a moving local passenger train crossing in the distance.
 		_box(segment, Vector3(7.0, 0.04, 8.0), Vector3(-10.0, -0.12, -12.0), Color(0.12, 0.42, 0.58))
 		_box(segment, Vector3(4.0, 0.22, 7.0), Vector3(9.0, 0.0, -12.0), Color(0.52, 0.50, 0.43))
+		_add_train_crossing(segment)
 	elif zone == 4:
 		# Dinajpur-inspired town blocks and a short elevated flyover section.
 		for side in [-1, 1]:
