@@ -15,6 +15,12 @@ var distance_m := 0.0
 var coins := 0
 var score := 0
 var game_over := false
+var paused := false
+var best_score := 0
+var total_coins := 0
+var pause_button: Button
+var pause_overlay: ColorRect
+var best_label: Label
 var swipe_start := Vector2.ZERO
 var segments: Array[Node3D] = []
 var coin_nodes: Array[Area3D] = []
@@ -27,6 +33,7 @@ var touch_hint: Label
 
 func _ready() -> void:
 	randomize()
+	_load_progress()
 	_build_world()
 	_build_player()
 	_build_camera()
@@ -36,7 +43,7 @@ func _ready() -> void:
 	_update_hud()
 
 func _process(delta: float) -> void:
-	if game_over:
+	if game_over or paused:
 		return
 	distance_m += FORWARD_SPEED * delta
 	score = int(distance_m) + coins * 10
@@ -62,11 +69,14 @@ func _update_player_actions(delta: float) -> void:
 		player.scale.y = 1.0
 
 func _unhandled_input(event: InputEvent) -> void:
-	if game_over:
-		if event is InputEventScreenTouch and event.pressed:
+	if game_over or paused:
+		if event is InputEventKey and event.pressed and event.keycode == KEY_P:
+			_toggle_pause()
+		elif game_over and event is InputEventKey and event.pressed and event.keycode in [KEY_ENTER, KEY_SPACE]:
 			get_tree().reload_current_scene()
-		elif event is InputEventKey and event.pressed and event.keycode in [KEY_ENTER, KEY_SPACE]:
-			get_tree().reload_current_scene()
+		return
+	if event is InputEventKey and event.pressed and event.keycode == KEY_P:
+		_toggle_pause()
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
@@ -148,24 +158,71 @@ func _build_hud() -> void:
 	hud = CanvasLayer.new()
 	add_child(hud)
 	var panel := ColorRect.new()
-	panel.color = Color(0.02, 0.08, 0.12, 0.72)
+	panel.color = Color(0.02, 0.08, 0.12, 0.78)
 	panel.position = Vector2(14, 14)
-	panel.size = Vector2(390, 112)
+	panel.size = Vector2(310, 112)
 	hud.add_child(panel)
 	score_label = Label.new()
-	score_label.position = Vector2(28, 20)
-	score_label.add_theme_font_size_override("font_size", 25)
+	score_label.position = Vector2(14, 10)
+	score_label.add_theme_font_size_override("font_size", 23)
 	panel.add_child(score_label)
 	status_label = Label.new()
-	status_label.position = Vector2(28, 58)
-	status_label.add_theme_font_size_override("font_size", 18)
+	status_label.position = Vector2(14, 62)
+	status_label.add_theme_font_size_override("font_size", 17)
 	panel.add_child(status_label)
+	best_label = Label.new()
+	best_label.position = Vector2(14, 86)
+	best_label.add_theme_font_size_override("font_size", 14)
+	panel.add_child(best_label)
+
+	pause_button = Button.new()
+	pause_button.text = "Ⅱ"
+	pause_button.position = Vector2(-76, 14)
+	pause_button.size = Vector2(62, 54)
+	pause_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	pause_button.add_theme_font_size_override("font_size", 25)
+	pause_button.pressed.connect(_toggle_pause)
+	hud.add_child(pause_button)
+
 	touch_hint = Label.new()
-	touch_hint.text = "Swipe: বামে / ডানে • উপরে লাফ • নিচে স্লাইড"
-	touch_hint.position = Vector2(12, 1160)
-	touch_hint.add_theme_font_size_override("font_size", 17)
+	touch_hint.text = "Swipe ← → lane  •  ↑ jump  •  ↓ slide"
+	touch_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	touch_hint.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	touch_hint.offset_left = 8
+	touch_hint.offset_top = -48
+	touch_hint.offset_right = -8
+	touch_hint.offset_bottom = -12
+	touch_hint.add_theme_font_size_override("font_size", 16)
 	touch_hint.add_theme_color_override("font_color", Color.WHITE)
 	hud.add_child(touch_hint)
+
+	pause_overlay = ColorRect.new()
+	pause_overlay.color = Color(0.01, 0.03, 0.06, 0.82)
+	pause_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	pause_overlay.visible = false
+	hud.add_child(pause_overlay)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	pause_overlay.add_child(center)
+	var menu := VBoxContainer.new()
+	menu.add_theme_constant_override("separation", 16)
+	menu.custom_minimum_size = Vector2(260, 0)
+	center.add_child(menu)
+	var heading := Label.new()
+	heading.text = "JIBON RUNNER"
+	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	heading.add_theme_font_size_override("font_size", 30)
+	menu.add_child(heading)
+	var resume := Button.new()
+	resume.text = "খেলা চালিয়ে যান"
+	resume.custom_minimum_size = Vector2(260, 58)
+	resume.pressed.connect(_resume_game)
+	menu.add_child(resume)
+	var restart := Button.new()
+	restart.text = "আবার শুরু"
+	restart.custom_minimum_size = Vector2(260, 58)
+	restart.pressed.connect(func(): get_tree().reload_current_scene())
+	menu.add_child(restart)
 
 func _add_segment(z_pos: float) -> void:
 	var segment := Node3D.new()
@@ -265,6 +322,8 @@ func _check_pickups_and_obstacles() -> void:
 		var offset: Vector3 = coin.global_position - player.global_position
 		if absf(offset.z) < 0.85 and absf(offset.x) < 0.9 and absf(offset.y) < 1.4:
 			coins += 1
+			total_coins += 1
+			_save_progress()
 			coin_nodes.erase(coin)
 			coin.queue_free()
 	for obstacle in obstacle_nodes.duplicate():
@@ -305,8 +364,9 @@ func _recycle_segments() -> void:
 			break
 
 func _update_hud() -> void:
-	score_label.text = "JIBON RUNNER   |   স্কোর: %d\nকয়েন: %d" % [score, coins]
+	score_label.text = "স্কোর: %d\nকয়েন: %d" % [score, coins]
 	status_label.text = "দূরত্ব: %.0f মিটার" % distance_m
+	best_label.text = "সেরা: %d  |  মোট কয়েন: %d" % [best_score, total_coins]
 	for milestone in [5000, 10000, 15000, 20000]:
 		if distance_m >= float(milestone) and distance_m < float(milestone) + 10.0:
 			status_label.text = "%d কিমি অতিক্রম করেছেন!" % int(milestone / 1000)
@@ -314,5 +374,40 @@ func _update_hud() -> void:
 
 func _end_game() -> void:
 	game_over = true
-	status_label.text = "গেম শেষ! স্কোর: %d\nআবার খেলতে টাচ করুন" % score
-	touch_hint.text = "আবার শুরু করতে স্ক্রিনে টাচ করুন"
+	best_score = maxi(best_score, score)
+	_save_progress()
+	status_label.text = "গেম শেষ! স্কোর: %d" % score
+	touch_hint.text = "গেম শেষ — আবার শুরু করতে বোতাম চাপুন"
+	pause_button.visible = false
+	pause_overlay.visible = true
+	for child in pause_overlay.get_children():
+		if child is CenterContainer:
+			var menu := child.get_child(0) as VBoxContainer
+			if menu.get_child_count() > 1:
+				menu.get_child(1).visible = false
+			if menu.get_child_count() > 2:
+				menu.get_child(2).text = "আবার খেলুন"
+
+func _toggle_pause() -> void:
+	if game_over:
+		return
+	paused = not paused
+	pause_overlay.visible = paused
+	pause_button.text = "▶" if paused else "Ⅱ"
+
+func _resume_game() -> void:
+	paused = false
+	pause_overlay.visible = false
+	pause_button.text = "Ⅱ"
+
+func _load_progress() -> void:
+	var save := ConfigFile.new()
+	if save.load("user://jibon_runner_save.cfg") == OK:
+		best_score = int(save.get_value("progress", "best_score", 0))
+		total_coins = int(save.get_value("progress", "total_coins", 0))
+
+func _save_progress() -> void:
+	var save := ConfigFile.new()
+	save.set_value("progress", "best_score", best_score)
+	save.set_value("progress", "total_coins", total_coins)
+	save.save("user://jibon_runner_save.cfg")
