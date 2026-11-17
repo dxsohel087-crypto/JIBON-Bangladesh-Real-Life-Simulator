@@ -7,6 +7,15 @@ on:
       - 'GodotProject/**'
       - '.github/workflows/godot-web-demo.yml'
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "github-pages"
+  cancel-in-progress: true
+
 jobs:
   export-web:
     runs-on: ubuntu-latest
@@ -32,9 +41,28 @@ jobs:
           mkdir -p GodotProject/build/web
           godot --headless --path GodotProject --export-release "Web" build/web/index.html
 
-      - name: Upload Web demo
+      - name: Upload downloadable Web demo
         uses: actions/upload-artifact@v4
         with:
           name: JIBON-RUNNER-Web-Demo
           path: GodotProject/build/web/
           if-no-files-found: error
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site files
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: GodotProject/build/web/
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: export-web
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
