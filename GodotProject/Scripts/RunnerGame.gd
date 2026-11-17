@@ -39,6 +39,7 @@ var shop_button: Button
 var mission_button: Button
 var daily_button: Button
 var player_body: MeshInstance3D
+var player_body_material: StandardMaterial3D
 var skin_index := 0
 var daily_claim_day := 0
 var swipe_start := Vector2.ZERO
@@ -155,9 +156,9 @@ func _build_player() -> void:
 	capsule.radius = 0.42
 	capsule.height = 1.8
 	player_body.mesh = capsule
-	var material := StandardMaterial3D.new()
-	material.albedo_color = _skin_color()
-	player_body.material_override = material
+	player_body_material = StandardMaterial3D.new()
+	player_body_material.albedo_color = _skin_color()
+	player_body.material_override = player_body_material
 	player.add_child(player_body)
 	var player_collision := CollisionShape3D.new()
 	var player_shape := CapsuleShape3D.new()
@@ -546,7 +547,7 @@ func _open_shop() -> void:
 	if total_coins >= 100:
 		total_coins -= 100
 		skin_index = (skin_index + 1) % 4
-		player_body.material_override.albedo_color = _skin_color()
+		player_body_material.albedo_color = _skin_color()
 		_save_progress()
 		menu_heading.text = "নতুন পোশাক নেওয়া হয়েছে!"
 	else:
