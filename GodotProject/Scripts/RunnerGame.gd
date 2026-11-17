@@ -57,11 +57,14 @@ var touch_hint: Label
 var traffic_vehicles: Array[Node3D] = []
 var traffic_wheels: Array[MeshInstance3D] = []
 var traffic_clock := 0.0
+var coin_audio: AudioStreamPlayer
+var crash_audio: AudioStreamPlayer
 
 func _ready() -> void:
 	randomize()
 	_load_progress()
 	_build_world()
+	_build_audio()
 	_build_player()
 	_build_camera()
 	_build_hud()
@@ -362,6 +365,36 @@ func _build_hud() -> void:
 	weather_button.pressed.connect(_toggle_rain)
 	menu.add_child(weather_button)
 
+func _build_audio() -> void:
+	# Short synthesized effects keep the APK self-contained (no external audio files).
+	coin_audio = AudioStreamPlayer.new()
+	coin_audio.name = "CoinPickupSound"
+	coin_audio.stream = _make_tone(880.0, 0.13, 0.22)
+	coin_audio.volume_db = -3.0
+	add_child(coin_audio)
+	crash_audio = AudioStreamPlayer.new()
+	crash_audio.name = "GameOverSound"
+	crash_audio.stream = _make_tone(145.0, 0.42, 0.28)
+	crash_audio.volume_db = -2.0
+	add_child(crash_audio)
+
+func _make_tone(frequency: float, duration: float, volume: float) -> AudioStreamWAV:
+	var sample_rate := 22050
+	var frame_count := int(float(sample_rate) * duration)
+	var samples := PackedByteArray()
+	samples.resize(frame_count * 2)
+	for i in range(frame_count):
+		var t := float(i) / float(sample_rate)
+		var envelope := 1.0 - float(i) / float(frame_count)
+		var sample := int(sin(TAU * frequency * t) * envelope * volume * 32767.0)
+		samples.encode_s16(i * 2, sample)
+	var stream := AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = sample_rate
+	stream.stereo = false
+	stream.data = samples
+	return stream
+
 func _build_traffic() -> void:
 	# Decorative traffic stays on the shoulders, away from the three playable lanes.
 	for i in range(4):
@@ -570,6 +603,8 @@ func _check_pickups_and_obstacles() -> void:
 		var offset: Vector3 = coin.global_position - player.global_position
 		if absf(offset.z) < 0.85 and absf(offset.x) < 0.9 and absf(offset.y) < 1.4:
 			coins += 1
+			if is_instance_valid(coin_audio):
+				coin_audio.play()
 			total_coins += 1
 			_save_progress()
 			coin_nodes.erase(coin)
@@ -622,6 +657,8 @@ func _update_hud() -> void:
 
 func _end_game() -> void:
 	game_over = true
+	if is_instance_valid(crash_audio):
+		crash_audio.play()
 	best_score = maxi(best_score, score)
 	_save_progress()
 	status_label.text = "গেম শেষ! স্কোর: %d" % score
