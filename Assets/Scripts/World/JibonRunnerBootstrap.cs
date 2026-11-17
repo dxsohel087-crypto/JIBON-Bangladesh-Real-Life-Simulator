@@ -6,7 +6,7 @@ using System.Collections.Generic;
 public sealed class JibonRunnerBootstrap : MonoBehaviour
 {
     RunnerController runner; RunnerGameSession session; DistanceTracker distance; FoodBreakManager breaks; Text hud; GameObject breakPanel, pausePanel, overPanel;
-    float hazardAt = 38f, coinAt = 20f, nextRoadZ = 0f; readonly Queue<GameObject> roadPool = new Queue<GameObject>(); Material road, grass, human, hazard, coin, house;
+    float hazardAt = 38f, coinAt = 20f, nextRoadZ = 0f; readonly Queue<GameObject> roadPool = new Queue<GameObject>(); Material road, grass, human, hazard, coin, house, lineMat;
     void Start() { Application.targetFrameRate = 60; MakeMaterials(); MakeWorld(); MakePlayer(); MakeCamera(); MakeSystems(); MakeHud(); }
     void Update()
     {
@@ -18,11 +18,10 @@ public sealed class JibonRunnerBootstrap : MonoBehaviour
         if (hud != null) hud.text = "দূরত্ব: " + Mathf.FloorToInt(session.Distance) + " মিটার     কয়েন: " + session.Coins;
     }
     Material Mat(Color c) { Material m = new Material(Shader.Find("Standard")); m.color = c; return m; }
-    void MakeMaterials() { road=Mat(new Color(.19f,.2f,.21f)); grass=Mat(new Color(.12f,.38f,.16f)); human=Mat(new Color(.08f,.25f,.82f)); hazard=Mat(new Color(.78f,.12f,.07f)); coin=Mat(new Color(1f,.72f,.05f)); house=Mat(new Color(.7f,.58f,.4f)); }
+    void MakeMaterials() { road=Mat(new Color(.19f,.2f,.21f)); grass=Mat(new Color(.12f,.38f,.16f)); human=Mat(new Color(.08f,.25f,.82f)); hazard=Mat(new Color(.78f,.12f,.07f)); coin=Mat(new Color(1f,.72f,.05f)); house=Mat(new Color(.7f,.58f,.4f)); lineMat=Mat(Color.white); }
     GameObject Cube(string n, Vector3 p, Vector3 s, Material m, bool solid = false) { GameObject g=GameObject.CreatePrimitive(PrimitiveType.Cube); g.name=n; g.transform.position=p; g.transform.localScale=s; g.GetComponent<Renderer>().material=m; if(!solid) g.GetComponent<Collider>().enabled=false; return g; }
     void MakeWorld()
     {
-        Cube("Bangladesh fields",new Vector3(0,-.5f,1200),new Vector3(180,.2f,2600),grass);
         for (int i=0;i<12;i++) SpawnRoadSegment();
         for(int i=0;i<28;i++) { float z=i*12f+8f; Tree(new Vector3(-9,0,z)); Tree(new Vector3(9,0,z+4)); if(i%4==0) House(new Vector3(i%8==0?-15:15,0,z+2)); }
         
@@ -35,22 +34,22 @@ public sealed class JibonRunnerBootstrap : MonoBehaviour
             GameObject old = roadPool.Peek();
             if (old == null) { roadPool.Dequeue(); continue; }
             if (old.transform.position.z + 30f > runner.transform.position.z - 60f) break;
-            roadPool.Dequeue(); old.transform.position = new Vector3(0f,-1000f,nextRoadZ); old.SetActive(false); roadPool.Enqueue(old); nextRoadZ += 30f;
+            roadPool.Dequeue(); Destroy(old);
         }
     }
     void SpawnRoadSegment()
     {
-        GameObject segment = null;
-        foreach (GameObject item in roadPool) if (item != null && !item.activeSelf) { segment=item; break; }
-        if (segment == null) { segment = new GameObject("Endless road segment"); roadPool.Enqueue(segment); }
-        segment.SetActive(true); segment.transform.position = new Vector3(0f,0f,nextRoadZ);
+        GameObject segment = new GameObject("Endless road segment");
+        segment.transform.position = new Vector3(0f,0f,nextRoadZ);
+        roadPool.Enqueue(segment);
         GameObject slab = GameObject.CreatePrimitive(PrimitiveType.Cube); slab.name="Road surface"; slab.transform.SetParent(segment.transform,false); slab.transform.localPosition=new Vector3(0f,-.2f,15f); slab.transform.localScale=new Vector3(9f,.4f,30f); slab.GetComponent<Renderer>().material=road;
-        for(int i=0;i<2;i++) { GameObject mark=GameObject.CreatePrimitive(PrimitiveType.Cube); mark.transform.SetParent(segment.transform,false); mark.transform.localPosition=new Vector3(i==0?-1.25f:1.25f,.015f,Random.Range(4f,26f)); mark.transform.localScale=new Vector3(.08f,.025f,2f); mark.GetComponent<Renderer>().material=Mat(Color.white); mark.GetComponent<Collider>().enabled=false; }
-        for(int side=-1;side<=1;side+=2) if(Random.value>.18f) Tree(new Vector3(side*Random.Range(8f,13f),0f,nextRoadZ+Random.Range(3f,27f)));
-        if(Random.value>.72f) House(new Vector3(Random.value>.5f?-15f:15f,0f,nextRoadZ+15f));
+        for(int side=-1;side<=1;side+=2) { GameObject field=GameObject.CreatePrimitive(PrimitiveType.Cube); field.transform.SetParent(segment.transform,false); field.transform.localPosition=new Vector3(side*24f,-.48f,15f); field.transform.localScale=new Vector3(38f,.2f,30f); field.GetComponent<Renderer>().material=grass; field.GetComponent<Collider>().enabled=false; }
+        for(int i=0;i<2;i++) { GameObject mark=GameObject.CreatePrimitive(PrimitiveType.Cube); mark.transform.SetParent(segment.transform,false); mark.transform.localPosition=new Vector3(i==0?-1.25f:1.25f,.015f,Random.Range(4f,26f)); mark.transform.localScale=new Vector3(.08f,.025f,2f); mark.GetComponent<Renderer>().material=lineMat; mark.GetComponent<Collider>().enabled=false; }
+        for(int side=-1;side<=1;side+=2) if(Random.value>.18f) Tree(new Vector3(side*Random.Range(8f,13f),0f,nextRoadZ+Random.Range(3f,27f)),segment.transform);
+        if(Random.value>.72f) House(new Vector3(Random.value>.5f?-15f:15f,0f,nextRoadZ+15f),segment.transform);
         nextRoadZ += 30f;
     }
-    void Tree(Vector3 p) { GameObject t=GameObject.CreatePrimitive(PrimitiveType.Cylinder); t.transform.position=p+Vector3.up*1.2f; t.transform.localScale=new Vector3(.35f,1.2f,.35f); t.GetComponent<Renderer>().material=house; t.GetComponent<Collider>().enabled=false; GameObject c=GameObject.CreatePrimitive(PrimitiveType.Sphere); c.transform.position=p+Vector3.up*3f; c.transform.localScale=Vector3.one*2.5f; c.GetComponent<Renderer>().material=grass; c.GetComponent<Collider>().enabled=false; }
+    void Tree(Vector3 p, Transform parent = null) { GameObject t=GameObject.CreatePrimitive(PrimitiveType.Cylinder); t.transform.position=p+Vector3.up*1.2f; t.transform.localScale=new Vector3(.35f,1.2f,.35f); t.GetComponent<Renderer>().material=house; t.GetComponent<Collider>().enabled=false; if(parent!=null)t.transform.SetParent(parent,true); GameObject c=GameObject.CreatePrimitive(PrimitiveType.Sphere); c.transform.position=p+Vector3.up*3f; c.transform.localScale=Vector3.one*2.5f; c.GetComponent<Renderer>().material=grass; c.GetComponent<Collider>().enabled=false; }
     void House(Vector3 p) { Cube("Village house",p+Vector3.up*1.1f,new Vector3(4,2.2f,5),house); Cube("Tin roof",p+Vector3.up*2.35f,new Vector3(4.5f,.35f,5.5f),hazard); }
     void MakePlayer() { GameObject p=GameObject.CreatePrimitive(PrimitiveType.Capsule); p.name="Player"; p.transform.position=new Vector3(0,1,4); Destroy(p.GetComponent<CapsuleCollider>()); CharacterController cc=p.AddComponent<CharacterController>(); cc.height=1.8f; cc.radius=.42f; cc.center=new Vector3(0,.9f,0); p.GetComponent<Renderer>().material=human; runner=p.AddComponent<RunnerController>(); }
     void MakeCamera() { GameObject g=new GameObject("Runner Camera"); Camera c=g.AddComponent<Camera>(); c.fieldOfView=68; g.AddComponent<AudioListener>(); g.transform.position=runner.transform.position+new Vector3(0,5.5f,-9); g.AddComponent<RunnerCameraFollow>().Configure(runner.transform); RenderSettings.ambientLight=new Color(.6f,.64f,.7f); GameObject l=new GameObject("Sun"); l.AddComponent<Light>().type=LightType.Directional; l.transform.rotation=Quaternion.Euler(48,-30,0); }

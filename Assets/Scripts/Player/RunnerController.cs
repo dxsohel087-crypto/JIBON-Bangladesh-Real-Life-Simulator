@@ -31,12 +31,6 @@ public sealed class RunnerController : MonoBehaviour
             if (Mathf.Abs(d.x) > Mathf.Abs(d.y)) ChangeLane(d.x > 0 ? 1 : -1); else if (d.y > 0) Jump(); else Slide();
         }
     }
-    void OnControllerColliderHit(ControllerColliderHit hit)
-    {
-        if (hit.collider.GetComponent<RunnerObstacle>() == null) return;
-        RunnerGameSession session = FindObjectOfType<RunnerGameSession>();
-        if (session != null) session.HitObstacle();
-    }
     public void ChangeLane(int direction) { lane = Mathf.Clamp(lane + direction, 0, 2); }
     public void Jump() { if (running && controller.isGrounded && !IsSliding) verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity); }
     public void Slide() { if (!running || !controller.isGrounded) return; slideTimer = slideDuration; controller.height = standingHeight * .55f; controller.center = standingCenter * .55f; }
