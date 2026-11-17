@@ -34,6 +34,7 @@ var breaks_reached: Array[int] = []
 var sun_light: DirectionalLight3D
 var world_environment: WorldEnvironment
 var day_clock := 0.0
+var break_scene: Node3D
 var swipe_start := Vector2.ZERO
 var segments: Array[Node3D] = []
 var coin_nodes: Array[Area3D] = []
@@ -477,6 +478,9 @@ func _toggle_pause() -> void:
 func _resume_game() -> void:
 	paused = false
 	break_active = false
+	if is_instance_valid(break_scene):
+		break_scene.queue_free()
+	break_scene = null
 	pause_overlay.visible = false
 	pause_button.text = "Ⅱ"
 	menu_heading.text = "JIBON RUNNER"
@@ -495,6 +499,7 @@ func _check_distance_breaks() -> void:
 			breaks_reached.append(milestone)
 			break_active = true
 			paused = true
+			_create_break_scene(milestone)
 			pause_overlay.visible = true
 			menu_heading.text = milestones[milestone]
 			resume_button.text = "বিরতি শেষ — চালিয়ে যান"
@@ -502,6 +507,33 @@ func _check_distance_breaks() -> void:
 			restart_button.text = "এখনই নতুন করে শুরু"
 			pause_button.text = "▶"
 			return
+
+func _create_break_scene(milestone: int) -> void:
+	if is_instance_valid(break_scene):
+		break_scene.queue_free()
+	break_scene = Node3D.new()
+	break_scene.name = "DistanceBreakScene"
+	break_scene.position = player.position + Vector3(0, 0, -5.5)
+	world_root.add_child(break_scene)
+	# A small Bangladesh roadside tea/food stall with a tin roof.
+	_box(break_scene, Vector3(3.8, 0.18, 2.4), Vector3(0, 1.7, 0), Color(0.34, 0.40, 0.46))
+	_box(break_scene, Vector3(3.3, 1.0, 0.22), Vector3(0, 0.72, -0.95), Color(0.48, 0.28, 0.12))
+	for x in [-1.55, 1.55]:
+		_box(break_scene, Vector3(0.12, 2.0, 0.12), Vector3(x, 0.8, -0.9), Color(0.30, 0.20, 0.10))
+	_box(break_scene, Vector3(3.8, 0.12, 2.5), Vector3(0, 1.55, 0), Color(0.60, 0.16, 0.10))
+	var food := MeshInstance3D.new()
+	var dish := CylinderMesh.new()
+	dish.top_radius = 0.38
+	dish.bottom_radius = 0.32
+	dish.height = 0.12
+	food.mesh = dish
+	food.position = Vector3(0, 1.28, -0.35)
+	var food_mat := StandardMaterial3D.new()
+	food_mat.albedo_color = Color(0.88, 0.72, 0.36) if milestone == 5000 else Color(0.78, 0.78, 0.68)
+	food.material_override = food_mat
+	break_scene.add_child(food)
+	_box(break_scene, Vector3(1.1, 0.65, 0.8), Vector3(-2.1, 0.32, 0.8), Color(0.38, 0.24, 0.12))
+	_box(break_scene, Vector3(1.1, 0.65, 0.8), Vector3(2.1, 0.32, 0.8), Color(0.38, 0.24, 0.12))
 
 func _update_day_night(delta: float) -> void:
 	day_clock = fmod(day_clock + delta * 0.012, TAU)
