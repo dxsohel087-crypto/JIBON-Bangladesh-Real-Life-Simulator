@@ -70,7 +70,7 @@ jobs:
           GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
         run: |
           mkdir -p GodotProject/build/android
-          godot --headless --path GodotProject --export-debug "Android" GodotProject/build/android/JIBON-RUNNER.apk --verbose
+          godot --headless --path GodotProject --export-debug "Android" "$GITHUB_WORKSPACE/GodotProject/build/android/JIBON-RUNNER.apk" --verbose
 
       - name: Verify APK
         run: |
