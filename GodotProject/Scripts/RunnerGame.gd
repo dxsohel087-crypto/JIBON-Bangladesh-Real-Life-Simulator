@@ -31,6 +31,9 @@ var resume_button: Button
 var restart_button: Button
 var break_active := false
 var breaks_reached: Array[int] = []
+var sun_light: DirectionalLight3D
+var world_environment: WorldEnvironment
+var day_clock := 0.0
 var swipe_start := Vector2.ZERO
 var segments: Array[Node3D] = []
 var coin_nodes: Array[Area3D] = []
@@ -56,6 +59,7 @@ func _process(delta: float) -> void:
 	if game_over or paused:
 		return
 	distance_m += FORWARD_SPEED * delta
+	_update_day_night(delta)
 	_check_distance_breaks()
 	if paused:
 		return
@@ -120,19 +124,19 @@ func _build_world() -> void:
 	world_root = Node3D.new()
 	world_root.name = "EndlessBangladeshWorld"
 	add_child(world_root)
-	var sun := DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-48, -25, 0)
-	sun.light_energy = 1.2
-	world_root.add_child(sun)
-	var env := WorldEnvironment.new()
+	sun_light = DirectionalLight3D.new()
+	sun_light.rotation_degrees = Vector3(-48, -25, 0)
+	sun_light.light_energy = 1.2
+	world_root.add_child(sun_light)
+	world_environment = WorldEnvironment.new()
 	var environment := Environment.new()
 	environment.background_mode = Environment.BG_SKY
 	environment.sky = Sky.new()
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color = Color(0.65, 0.75, 0.82)
 	environment.ambient_light_energy = 0.7
-	env.environment = environment
-	world_root.add_child(env)
+	world_environment.environment = environment
+	world_root.add_child(world_environment)
 
 func _build_player() -> void:
 	player = CharacterBody3D.new()
@@ -274,38 +278,71 @@ func _add_segment(z_pos: float) -> void:
 	_add_field_props(segment, z_pos)
 
 func _add_field_props(segment: Node3D, z_pos: float) -> void:
+	# Roadside paddy plots and irrigation channels
 	for side in [-1, 1]:
-		for i in range(3):
-			var tree := MeshInstance3D.new()
-			var trunk := CylinderMesh.new()
-			trunk.top_radius = 0.12
-			trunk.bottom_radius = 0.18
-			trunk.height = 1.5
-			tree.mesh = trunk
-			tree.position = Vector3(float(side) * (6.0 + float(i % 2)), 0.65, -3.0 - float(i) * 7.0)
-			var trunk_mat := StandardMaterial3D.new()
-			trunk_mat.albedo_color = Color(0.32, 0.2, 0.1)
-			tree.material_override = trunk_mat
-			segment.add_child(tree)
+		_box(segment, Vector3(15.0, 0.06, SEGMENT_LENGTH), Vector3(float(side) * 13.0, -0.25, -SEGMENT_LENGTH * 0.5), Color(0.18, 0.42, 0.12))
+		_box(segment, Vector3(0.7, 0.035, SEGMENT_LENGTH), Vector3(float(side) * 7.3, -0.20, -SEGMENT_LENGTH * 0.5), Color(0.18, 0.48, 0.55))
+		for row in range(5):
+			for plant in range(5):
+				var crop := MeshInstance3D.new()
+				var blade := CylinderMesh.new()
+				blade.top_radius = 0.025
+				blade.bottom_radius = 0.07
+				blade.height = 0.48
+				crop.mesh = blade
+				crop.position = Vector3(float(side) * (8.5 + float(plant) * 0.72), 0.12, -1.5 - float(row) * 4.2)
+				crop.rotation.z = randf_range(-0.18, 0.18)
+				var crop_mat := StandardMaterial3D.new()
+				crop_mat.albedo_color = Color(0.22 + randf() * 0.12, 0.48 + randf() * 0.18, 0.12)
+				crop.material_override = crop_mat
+				segment.add_child(crop)
+		for i in range(2):
+			var trunk := _box(segment, Vector3(0.28, 1.5, 0.28), Vector3(float(side) * (6.2 + float(i) * 1.0), 0.55, -4.0 - float(i) * 12.0), Color(0.32, 0.2, 0.1))
 			var crown := MeshInstance3D.new()
 			var crown_mesh := SphereMesh.new()
-			crown_mesh.radius = 0.85
-			crown_mesh.height = 1.5
+			crown_mesh.radius = 0.95
+			crown_mesh.height = 1.55
 			crown.mesh = crown_mesh
-			crown.position = tree.position + Vector3(0, 1.15, 0)
+			crown.position = trunk.position + Vector3(0, 1.1, 0)
 			var leaf := StandardMaterial3D.new()
-			leaf.albedo_color = Color(0.12, 0.42, 0.16)
+			leaf.albedo_color = Color(0.10, 0.34 + randf() * 0.12, 0.13)
 			crown.material_override = leaf
 			segment.add_child(crown)
-	_box(segment, Vector3(18, 0.08, SEGMENT_LENGTH), Vector3(-14, -0.22, -SEGMENT_LENGTH * 0.5), Color(0.25, 0.48, 0.16))
-	_box(segment, Vector3(18, 0.08, SEGMENT_LENGTH), Vector3(14, -0.22, -SEGMENT_LENGTH * 0.5), Color(0.25, 0.48, 0.16))
-	if int(absf(z_pos) / SEGMENT_LENGTH) % 3 == 1:
-		_box(segment, Vector3(2.2, 2.5, 2.0), Vector3(-7.0, 1.15, -12), Color(0.72, 0.55, 0.32))
-		_box(segment, Vector3(2.2, 2.5, 2.0), Vector3(7.0, 1.15, -5), Color(0.65, 0.42, 0.28))
-	if int(absf(z_pos) / SEGMENT_LENGTH) % 2 == 0:
-		_add_coin(segment, Vector3(LANES[randi_range(0, 2)], 1.0, -15.0))
+
+	var zone := int(absf(z_pos) / SEGMENT_LENGTH) % 5
+	if zone == 1:
+		# Village houses with bright tin roofs
+		for side in [-1, 1]:
+			var x := float(side) * 8.5
+			_box(segment, Vector3(2.8, 2.2, 3.0), Vector3(x, 0.95, -10.0), Color(0.78, 0.62, 0.39))
+			_box(segment, Vector3(3.1, 0.22, 3.3), Vector3(x, 2.15, -10.0), Color(0.35, 0.43, 0.48))
+	elif zone == 2:
+		# Small roadside bazaar stalls
+		for side in [-1, 1]:
+			var x := float(side) * 8.0
+			_box(segment, Vector3(2.8, 0.16, 2.4), Vector3(x, 1.0, -11.0), Color(0.42, 0.25, 0.12))
+			_box(segment, Vector3(3.0, 0.16, 2.6), Vector3(x, 2.15, -11.0), Color(0.78, 0.18 if side == -1 else 0.25, 0.12))
+			for post_x in [-1.25, 1.25]:
+				_box(segment, Vector3(0.10, 2.0, 0.10), Vector3(x + post_x, 1.0, -11.0), Color(0.25, 0.18, 0.1))
+	elif zone == 3:
+		# Pond and a simple concrete culvert
+		_box(segment, Vector3(7.0, 0.04, 8.0), Vector3(-10.0, -0.12, -12.0), Color(0.12, 0.42, 0.58))
+		_box(segment, Vector3(4.0, 0.22, 7.0), Vector3(9.0, 0.0, -12.0), Color(0.52, 0.50, 0.43))
 	else:
-		_add_obstacle(segment, Vector3(LANES[randi_range(0, 2)], 0.65, -16.0))
+		# Distant homes on the horizon
+		_box(segment, Vector3(2.2, 2.0, 2.2), Vector3(-8.0, 0.9, -15.0), Color(0.70, 0.52, 0.34))
+		_box(segment, Vector3(2.2, 2.0, 2.2), Vector3(8.0, 0.9, -6.0), Color(0.66, 0.48, 0.30))
+
+	var pattern := randi_range(0, 3)
+	if pattern == 0:
+		var coin_lane := randi_range(0, 2)
+		for n in range(4):
+			_add_coin(segment, Vector3(LANES[coin_lane], 1.0, -7.0 - float(n) * 3.0))
+	elif pattern == 1:
+		for n in range(3):
+			_add_coin(segment, Vector3(LANES[n], 1.0, -12.0))
+	else:
+		_add_obstacle(segment, Vector3(LANES[randi_range(0, 2)], 0.65, -14.0))
 
 func _box(parent: Node3D, size: Vector3, pos: Vector3, color: Color) -> MeshInstance3D:
 	var item := MeshInstance3D.new()
@@ -340,14 +377,21 @@ func _add_coin(parent: Node3D, pos: Vector3) -> void:
 func _add_obstacle(parent: Node3D, pos: Vector3) -> void:
 	var obstacle := Area3D.new()
 	obstacle.position = pos
-	var mesh := MeshInstance3D.new()
-	var block := BoxMesh.new()
-	block.size = Vector3(1.25, 1.3, 1.0)
-	mesh.mesh = block
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.78, 0.22, 0.12)
-	mesh.material_override = mat
-	obstacle.add_child(mesh)
+	var obstacle_type := randi_range(0, 2)
+	if obstacle_type == 0:
+		# Red road barrier
+		_box(obstacle, Vector3(1.55, 0.85, 0.28), Vector3(0, 0.15, 0), Color(0.82, 0.20, 0.10))
+		for stripe in [-0.48, 0.0, 0.48]:
+			_box(obstacle, Vector3(0.18, 0.88, 0.30), Vector3(stripe, 0.15, 0.02), Color(0.95, 0.88, 0.66))
+	elif obstacle_type == 1:
+		# Wooden produce crates
+		_box(obstacle, Vector3(1.15, 1.2, 0.95), Vector3(0, 0.32, 0), Color(0.48, 0.27, 0.12))
+		_box(obstacle, Vector3(1.18, 0.12, 0.98), Vector3(0, 0.0, 0), Color(0.62, 0.38, 0.18))
+	else:
+		# Roadside handcart silhouette
+		_box(obstacle, Vector3(1.35, 0.16, 0.85), Vector3(0, 0.45, 0), Color(0.40, 0.24, 0.10))
+		_box(obstacle, Vector3(0.12, 0.75, 0.12), Vector3(-0.48, 0.05, 0), Color(0.30, 0.18, 0.08))
+		_box(obstacle, Vector3(0.12, 0.75, 0.12), Vector3(0.48, 0.05, 0), Color(0.30, 0.18, 0.08))
 	parent.add_child(obstacle)
 	obstacle_nodes.append(obstacle)
 
@@ -458,6 +502,14 @@ func _check_distance_breaks() -> void:
 			restart_button.text = "এখনই নতুন করে শুরু"
 			pause_button.text = "▶"
 			return
+
+func _update_day_night(delta: float) -> void:
+	day_clock = fmod(day_clock + delta * 0.012, TAU)
+	var daylight := clampf(0.52 + 0.48 * sin(day_clock - PI * 0.5), 0.12, 1.0)
+	sun_light.light_energy = 0.18 + daylight * 1.15
+	sun_light.rotation_degrees.x = -12.0 - daylight * 55.0
+	world_environment.environment.ambient_light_energy = 0.25 + daylight * 0.55
+	world_environment.environment.ambient_light_color = Color(0.32, 0.39, 0.56).lerp(Color(0.72, 0.78, 0.82), daylight)
 
 func _load_progress() -> void:
 	var save := ConfigFile.new()
