@@ -1,14 +1,17 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using UnityEngine.EventSystems;
+using System.Collections.Generic;
 public sealed class JibonRunnerBootstrap : MonoBehaviour
 {
     RunnerController runner; RunnerGameSession session; DistanceTracker distance; FoodBreakManager breaks; Text hud; GameObject breakPanel, pausePanel, overPanel;
-    float hazardAt = 38f, coinAt = 20f; Material road, grass, human, hazard, coin, house;
+    float hazardAt = 38f, coinAt = 20f, nextRoadZ = 0f; readonly Queue<GameObject> roadPool = new Queue<GameObject>(); Material road, grass, human, hazard, coin, house;
     void Start() { Application.targetFrameRate = 60; MakeMaterials(); MakeWorld(); MakePlayer(); MakeCamera(); MakeSystems(); MakeHud(); }
     void Update()
     {
         if (runner == null || !runner.IsRunning || session.IsGameOver) return;
+        MaintainEndlessRoad();
         float z = runner.transform.position.z;
         if (z + 85f > hazardAt) { MakeHazard(hazardAt); hazardAt += Random.Range(24f, 35f); }
         if (z + 60f > coinAt) { MakeCoins(coinAt); coinAt += Random.Range(18f, 27f); }
@@ -19,10 +22,33 @@ public sealed class JibonRunnerBootstrap : MonoBehaviour
     GameObject Cube(string n, Vector3 p, Vector3 s, Material m, bool solid = false) { GameObject g=GameObject.CreatePrimitive(PrimitiveType.Cube); g.name=n; g.transform.position=p; g.transform.localScale=s; g.GetComponent<Renderer>().material=m; if(!solid) g.GetComponent<Collider>().enabled=false; return g; }
     void MakeWorld()
     {
-        Cube("Road",new Vector3(0,-.2f,160),new Vector3(9,.4f,340),road,true);
-        Cube("Bangladesh fields",new Vector3(0,-.5f,160),new Vector3(180,.2f,380),grass);
+        Cube("Bangladesh fields",new Vector3(0,-.5f,1200),new Vector3(180,.2f,2600),grass);
+        for (int i=0;i<12;i++) SpawnRoadSegment();
         for(int i=0;i<28;i++) { float z=i*12f+8f; Tree(new Vector3(-9,0,z)); Tree(new Vector3(9,0,z+4)); if(i%4==0) House(new Vector3(i%8==0?-15:15,0,z+2)); }
-        for(int i=0;i<65;i++) for(int j=0;j<2;j++) Cube("Lane marking",new Vector3(j==0?-1.25f:1.25f,.015f,i*5f),new Vector3(.08f,.025f,2f),Mat(Color.white));
+        
+    }
+    void MaintainEndlessRoad()
+    {
+        while (runner.transform.position.z + 240f > nextRoadZ) SpawnRoadSegment();
+        while (roadPool.Count > 12)
+        {
+            GameObject old = roadPool.Peek();
+            if (old == null) { roadPool.Dequeue(); continue; }
+            if (old.transform.position.z + 30f > runner.transform.position.z - 60f) break;
+            roadPool.Dequeue(); old.transform.position = new Vector3(0f,-1000f,nextRoadZ); old.SetActive(false); roadPool.Enqueue(old); nextRoadZ += 30f;
+        }
+    }
+    void SpawnRoadSegment()
+    {
+        GameObject segment = null;
+        foreach (GameObject item in roadPool) if (item != null && !item.activeSelf) { segment=item; break; }
+        if (segment == null) { segment = new GameObject("Endless road segment"); roadPool.Enqueue(segment); }
+        segment.SetActive(true); segment.transform.position = new Vector3(0f,0f,nextRoadZ);
+        GameObject slab = GameObject.CreatePrimitive(PrimitiveType.Cube); slab.name="Road surface"; slab.transform.SetParent(segment.transform,false); slab.transform.localPosition=new Vector3(0f,-.2f,15f); slab.transform.localScale=new Vector3(9f,.4f,30f); slab.GetComponent<Renderer>().material=road;
+        for(int i=0;i<2;i++) { GameObject mark=GameObject.CreatePrimitive(PrimitiveType.Cube); mark.transform.SetParent(segment.transform,false); mark.transform.localPosition=new Vector3(i==0?-1.25f:1.25f,.015f,Random.Range(4f,26f)); mark.transform.localScale=new Vector3(.08f,.025f,2f); mark.GetComponent<Renderer>().material=Mat(Color.white); mark.GetComponent<Collider>().enabled=false; }
+        for(int side=-1;side<=1;side+=2) if(Random.value>.18f) Tree(new Vector3(side*Random.Range(8f,13f),0f,nextRoadZ+Random.Range(3f,27f)));
+        if(Random.value>.72f) House(new Vector3(Random.value>.5f?-15f:15f,0f,nextRoadZ+15f));
+        nextRoadZ += 30f;
     }
     void Tree(Vector3 p) { GameObject t=GameObject.CreatePrimitive(PrimitiveType.Cylinder); t.transform.position=p+Vector3.up*1.2f; t.transform.localScale=new Vector3(.35f,1.2f,.35f); t.GetComponent<Renderer>().material=house; t.GetComponent<Collider>().enabled=false; GameObject c=GameObject.CreatePrimitive(PrimitiveType.Sphere); c.transform.position=p+Vector3.up*3f; c.transform.localScale=Vector3.one*2.5f; c.GetComponent<Renderer>().material=grass; c.GetComponent<Collider>().enabled=false; }
     void House(Vector3 p) { Cube("Village house",p+Vector3.up*1.1f,new Vector3(4,2.2f,5),house); Cube("Tin roof",p+Vector3.up*2.35f,new Vector3(4.5f,.35f,5.5f),hazard); }
@@ -32,7 +58,7 @@ public sealed class JibonRunnerBootstrap : MonoBehaviour
     Text TextUI(Transform parent,string value,int size,Vector2 min,Vector2 max) { GameObject g=new GameObject("Text"); g.transform.SetParent(parent,false); Text t=g.AddComponent<Text>(); t.font=Resources.GetBuiltinResource<Font>("Arial.ttf"); t.text=value; t.fontSize=size; t.color=Color.white; t.alignment=TextAnchor.MiddleCenter; RectTransform r=t.rectTransform; r.anchorMin=min; r.anchorMax=max; r.offsetMin=Vector2.zero; r.offsetMax=Vector2.zero; return t; }
     void ButtonUI(Transform parent,string label,Vector2 pos,UnityEngine.Events.UnityAction action) { GameObject g=new GameObject(label); g.transform.SetParent(parent,false); Image im=g.AddComponent<Image>(); im.color=new Color(.06f,.4f,.18f,.95f); Button b=g.AddComponent<Button>(); b.onClick.AddListener(action); RectTransform r=g.GetComponent<RectTransform>(); r.anchorMin=pos-new Vector2(.09f,.04f); r.anchorMax=pos+new Vector2(.09f,.04f); r.offsetMin=Vector2.zero; r.offsetMax=Vector2.zero; TextUI(g.transform,label,20,Vector2.zero,Vector2.one); }
     GameObject Panel(Transform parent,string title,string button,UnityEngine.Events.UnityAction action) { GameObject g=new GameObject(title); g.transform.SetParent(parent,false); g.AddComponent<Image>().color=new Color(0,0,0,.84f); RectTransform r=g.GetComponent<RectTransform>(); r.anchorMin=new Vector2(.15f,.28f); r.anchorMax=new Vector2(.85f,.72f); r.offsetMin=Vector2.zero; r.offsetMax=Vector2.zero; TextUI(g.transform,title,32,new Vector2(.05f,.55f),new Vector2(.95f,.9f)); ButtonUI(g.transform,button,new Vector2(.5f,.25f),action); return g; }
-    void MakeHud() { GameObject g=new GameObject("JIBON HUD"); Canvas c=g.AddComponent<Canvas>(); c.renderMode=RenderMode.ScreenSpaceOverlay; g.AddComponent<CanvasScaler>().uiScaleMode=CanvasScaler.ScaleMode.ScaleWithScreenSize; g.AddComponent<GraphicRaycaster>(); hud=TextUI(g.transform,"দূরত্ব: 0 মিটার",22,new Vector2(.02f,.91f),new Vector2(.7f,.99f)); ButtonUI(g.transform,"বিরতি",new Vector2(.9f,.95f),Pause); breakPanel=Panel(g.transform,"খাবারের বিরতি","আবার দৌড় শুরু",ResumeBreak); pausePanel=Panel(g.transform,"খেলা বিরতি","চালু করুন",Resume); overPanel=Panel(g.transform,"খেলা শেষ","আবার খেলুন",Restart); breakPanel.SetActive(false); pausePanel.SetActive(false); overPanel.SetActive(false); }
+    void MakeHud() { GameObject g=new GameObject("JIBON HUD"); Canvas c=g.AddComponent<Canvas>(); c.renderMode=RenderMode.ScreenSpaceOverlay; g.AddComponent<CanvasScaler>().uiScaleMode=CanvasScaler.ScaleMode.ScaleWithScreenSize; g.AddComponent<GraphicRaycaster>(); GameObject es=new GameObject("EventSystem"); es.AddComponent<EventSystem>(); es.AddComponent<StandaloneInputModule>(); hud=TextUI(g.transform,"দূরত্ব: 0 মিটার",22,new Vector2(.02f,.91f),new Vector2(.7f,.99f)); ButtonUI(g.transform,"বিরতি",new Vector2(.9f,.95f),Pause); breakPanel=Panel(g.transform,"খাবারের বিরতি","আবার দৌড় শুরু",ResumeBreak); pausePanel=Panel(g.transform,"খেলা বিরতি","চালু করুন",Resume); overPanel=Panel(g.transform,"খেলা শেষ","আবার খেলুন",Restart); breakPanel.SetActive(false); pausePanel.SetActive(false); overPanel.SetActive(false); }
     void MakeHazard(float z) { int lane=Random.Range(0,3); GameObject o=Cube("Obstacle vehicle",new Vector3((lane-1)*2.5f,.85f,z),new Vector3(1.8f,1.7f,2.4f),hazard,true); o.AddComponent<RunnerObstacle>(); }
     void MakeCoins(float z) { int lane=Random.Range(0,3); for(int i=0;i<5;i++){ GameObject o=GameObject.CreatePrimitive(PrimitiveType.Cylinder); o.name="Coin"; o.transform.position=new Vector3((lane-1)*2.5f,1.15f,z+i*1.5f); o.transform.localScale=new Vector3(.45f,.08f,.45f); o.GetComponent<Renderer>().material=coin; Collider c=o.GetComponent<Collider>(); c.isTrigger=true; Rigidbody rb=o.AddComponent<Rigidbody>(); rb.isKinematic=true; o.AddComponent<RunnerCollectible>(); } }
     void Pause() { runner.SetRunning(false); Time.timeScale=0; pausePanel.SetActive(true); }
