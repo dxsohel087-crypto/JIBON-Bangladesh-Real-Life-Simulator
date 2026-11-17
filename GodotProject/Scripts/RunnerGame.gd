@@ -26,6 +26,11 @@ var right_arm: MeshInstance3D
 var left_leg: MeshInstance3D
 var right_leg: MeshInstance3D
 var run_clock := 0.0
+var menu_heading: Label
+var resume_button: Button
+var restart_button: Button
+var break_active := false
+var breaks_reached: Array[int] = []
 var swipe_start := Vector2.ZERO
 var segments: Array[Node3D] = []
 var coin_nodes: Array[Area3D] = []
@@ -51,6 +56,9 @@ func _process(delta: float) -> void:
 	if game_over or paused:
 		return
 	distance_m += FORWARD_SPEED * delta
+	_check_distance_breaks()
+	if paused:
+		return
 	score = int(distance_m) + coins * 10
 	player.position.z -= FORWARD_SPEED * delta
 	_update_player_actions(delta)
@@ -237,21 +245,21 @@ func _build_hud() -> void:
 	menu.add_theme_constant_override("separation", 16)
 	menu.custom_minimum_size = Vector2(260, 0)
 	center.add_child(menu)
-	var heading := Label.new()
-	heading.text = "JIBON RUNNER"
-	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	heading.add_theme_font_size_override("font_size", 30)
-	menu.add_child(heading)
-	var resume := Button.new()
-	resume.text = "খেলা চালিয়ে যান"
-	resume.custom_minimum_size = Vector2(260, 58)
-	resume.pressed.connect(_resume_game)
-	menu.add_child(resume)
-	var restart := Button.new()
-	restart.text = "আবার শুরু"
-	restart.custom_minimum_size = Vector2(260, 58)
-	restart.pressed.connect(func(): get_tree().reload_current_scene())
-	menu.add_child(restart)
+	menu_heading = Label.new()
+	menu_heading.text = "JIBON RUNNER"
+	menu_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	menu_heading.add_theme_font_size_override("font_size", 30)
+	menu.add_child(menu_heading)
+	resume_button = Button.new()
+	resume_button.text = "খেলা চালিয়ে যান"
+	resume_button.custom_minimum_size = Vector2(260, 58)
+	resume_button.pressed.connect(_resume_game)
+	menu.add_child(resume_button)
+	restart_button = Button.new()
+	restart_button.text = "আবার শুরু"
+	restart_button.custom_minimum_size = Vector2(260, 58)
+	restart_button.pressed.connect(func(): get_tree().reload_current_scene())
+	menu.add_child(restart_button)
 
 func _add_segment(z_pos: float) -> void:
 	var segment := Node3D.new()
@@ -409,25 +417,47 @@ func _end_game() -> void:
 	touch_hint.text = "গেম শেষ — আবার শুরু করতে বোতাম চাপুন"
 	pause_button.visible = false
 	pause_overlay.visible = true
-	for child in pause_overlay.get_children():
-		if child is CenterContainer:
-			var menu := child.get_child(0) as VBoxContainer
-			if menu.get_child_count() > 1:
-				menu.get_child(1).visible = false
-			if menu.get_child_count() > 2:
-				menu.get_child(2).text = "আবার খেলুন"
+	resume_button.visible = false
+	restart_button.text = "আবার খেলুন"
+	menu_heading.text = "গেম শেষ!"
 
 func _toggle_pause() -> void:
-	if game_over:
+	if game_over or break_active:
 		return
 	paused = not paused
 	pause_overlay.visible = paused
 	pause_button.text = "▶" if paused else "Ⅱ"
+	menu_heading.text = "বিরতি" if paused else "JIBON RUNNER"
+	resume_button.visible = true
 
 func _resume_game() -> void:
 	paused = false
+	break_active = false
 	pause_overlay.visible = false
 	pause_button.text = "Ⅱ"
+	menu_heading.text = "JIBON RUNNER"
+	resume_button.visible = true
+	restart_button.text = "আবার শুরু"
+
+func _check_distance_breaks() -> void:
+	var milestones := {
+		5000: "৫ কিমি — সকালের নাস্তার বিরতি! 🍞",
+		10000: "১০ কিমি — গ্রামের দোকানে খাবারের বিরতি! 🥤",
+		15000: "১৫ কিমি — দুপুরের খাবারের বিরতি! 🍚",
+		20000: "২০ কিমি — পানি পান করুন, একটু বিশ্রাম নিন! 💧"
+	}
+	for milestone in milestones.keys():
+		if distance_m >= float(milestone) and not breaks_reached.has(milestone):
+			breaks_reached.append(milestone)
+			break_active = true
+			paused = true
+			pause_overlay.visible = true
+			menu_heading.text = milestones[milestone]
+			resume_button.text = "বিরতি শেষ — চালিয়ে যান"
+			resume_button.visible = true
+			restart_button.text = "এখনই নতুন করে শুরু"
+			pause_button.text = "▶"
+			return
 
 func _load_progress() -> void:
 	var save := ConfigFile.new()
