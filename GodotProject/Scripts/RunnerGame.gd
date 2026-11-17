@@ -98,6 +98,12 @@ func _build_player() -> void:
 	material.albedo_color = Color(0.12, 0.25, 0.72)
 	body.material_override = material
 	player.add_child(body)
+	var player_collision := CollisionShape3D.new()
+	var player_shape := CapsuleShape3D.new()
+	player_shape.radius = 0.42
+	player_shape.height = 1.8
+	player_collision.shape = player_shape
+	player.add_child(player_collision)
 	var head := MeshInstance3D.new()
 	var sphere := SphereMesh.new()
 	sphere.radius = 0.27
