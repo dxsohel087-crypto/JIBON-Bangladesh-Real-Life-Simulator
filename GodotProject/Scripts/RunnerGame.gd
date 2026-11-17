@@ -216,7 +216,7 @@ func _build_hud() -> void:
 	pause_button.text = "Ⅱ"
 	pause_button.position = Vector2(-76, 14)
 	pause_button.size = Vector2(62, 54)
-	pause_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	pause_button.set_anchors_preset(Control.PRESET_TOP_RIGHT, true)
 	pause_button.add_theme_font_size_override("font_size", 25)
 	pause_button.pressed.connect(_toggle_pause)
 	hud.add_child(pause_button)
