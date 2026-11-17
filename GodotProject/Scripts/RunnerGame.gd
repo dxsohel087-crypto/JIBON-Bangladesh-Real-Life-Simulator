@@ -57,7 +57,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.pressed:
 			swipe_start = event.position
 		else:
-			var swipe := event.position - swipe_start
+			var swipe: Vector2 = event.position - swipe_start
 			if swipe.length() > 35:
 				if abs(swipe.x) > abs(swipe.y):
 					_change_lane(1 if swipe.x < 0 else -1)
