@@ -38,6 +38,9 @@ var break_scene: Node3D
 var shop_button: Button
 var mission_button: Button
 var daily_button: Button
+var weather_button: Button
+var rain_particles: CPUParticles3D
+var rain_enabled := false
 var player_body: MeshInstance3D
 var player_body_material: StandardMaterial3D
 var skin_index := 0
@@ -145,6 +148,35 @@ func _build_world() -> void:
 	environment.ambient_light_energy = 0.7
 	world_environment.environment = environment
 	world_root.add_child(world_environment)
+	_build_rain_effect()
+
+func _build_rain_effect() -> void:
+	rain_particles = CPUParticles3D.new()
+	rain_particles.name = "Rain"
+	rain_particles.amount = 180
+	rain_particles.lifetime = 1.4
+	rain_particles.emitting = false
+	rain_particles.position = Vector3(0, 7, -4)
+	rain_particles.direction = Vector3(0.02, -1.0, -0.08)
+	rain_particles.gravity = Vector3(0, -1.5, 0)
+	rain_particles.initial_velocity_min = 13.0
+	rain_particles.initial_velocity_max = 18.0
+	rain_particles.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	rain_particles.emission_box_extents = Vector3(12, 5, 18)
+	var drop := QuadMesh.new()
+	drop.size = Vector2(0.025, 0.32)
+	var drop_material := StandardMaterial3D.new()
+	drop_material.albedo_color = Color(0.65, 0.78, 0.9, 0.65)
+	drop_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	drop.material = drop_material
+	rain_particles.draw_pass_1 = drop
+	world_root.add_child(rain_particles)
+
+func _toggle_rain() -> void:
+	rain_enabled = not rain_enabled
+	rain_particles.emitting = rain_enabled
+	weather_button.text = "বৃষ্টি বন্ধ করুন" if rain_enabled else "বৃষ্টি চালু করুন"
+	menu_heading.text = "বৃষ্টি চালু হয়েছে" if rain_enabled else "আবহাওয়া পরিষ্কার"
 
 func _build_player() -> void:
 	player = CharacterBody3D.new()
@@ -287,6 +319,11 @@ func _build_hud() -> void:
 	daily_button.custom_minimum_size = Vector2(260, 48)
 	daily_button.pressed.connect(_claim_daily_reward)
 	menu.add_child(daily_button)
+	weather_button = Button.new()
+	weather_button.text = "বৃষ্টি চালু/বন্ধ"
+	weather_button.custom_minimum_size = Vector2(260, 48)
+	weather_button.pressed.connect(_toggle_rain)
+	menu.add_child(weather_button)
 
 func _add_segment(z_pos: float) -> void:
 	var segment := Node3D.new()
@@ -400,7 +437,7 @@ func _add_coin(parent: Node3D, pos: Vector3) -> void:
 func _add_obstacle(parent: Node3D, pos: Vector3) -> void:
 	var obstacle := Area3D.new()
 	obstacle.position = pos
-	var obstacle_type := randi_range(0, 2)
+	var obstacle_type := randi_range(0, 4)
 	if obstacle_type == 0:
 		# Red road barrier
 		_box(obstacle, Vector3(1.55, 0.85, 0.28), Vector3(0, 0.15, 0), Color(0.82, 0.20, 0.10))
@@ -410,11 +447,29 @@ func _add_obstacle(parent: Node3D, pos: Vector3) -> void:
 		# Wooden produce crates
 		_box(obstacle, Vector3(1.15, 1.2, 0.95), Vector3(0, 0.32, 0), Color(0.48, 0.27, 0.12))
 		_box(obstacle, Vector3(1.18, 0.12, 0.98), Vector3(0, 0.0, 0), Color(0.62, 0.38, 0.18))
-	else:
+	elif obstacle_type == 2:
 		# Roadside handcart silhouette
 		_box(obstacle, Vector3(1.35, 0.16, 0.85), Vector3(0, 0.45, 0), Color(0.40, 0.24, 0.10))
 		_box(obstacle, Vector3(0.12, 0.75, 0.12), Vector3(-0.48, 0.05, 0), Color(0.30, 0.18, 0.08))
 		_box(obstacle, Vector3(0.12, 0.75, 0.12), Vector3(0.48, 0.05, 0), Color(0.30, 0.18, 0.08))
+	elif obstacle_type == 3:
+		# Colorful three-wheeled local rickshaw
+		_box(obstacle, Vector3(1.35, 0.55, 0.82), Vector3(0, 0.42, 0), Color(0.08, 0.48, 0.30))
+		_box(obstacle, Vector3(1.15, 0.62, 0.18), Vector3(0, 1.0, -0.18), Color(0.92, 0.68, 0.12))
+		for wheel_x in [-0.52, 0.52]:
+			var wheel := MeshInstance3D.new()
+			var wheel_mesh := CylinderMesh.new()
+			wheel_mesh.top_radius = 0.22
+			wheel_mesh.bottom_radius = 0.22
+			wheel_mesh.height = 0.12
+			wheel.mesh = wheel_mesh
+			wheel.position = Vector3(wheel_x, 0.16, 0.0)
+			wheel.rotation_degrees.z = 90
+			obstacle.add_child(wheel)
+	else:
+		# Small local bus / minibus obstacle
+		_box(obstacle, Vector3(1.65, 1.55, 2.1), Vector3(0, 0.78, 0), Color(0.10, 0.42, 0.72))
+		_box(obstacle, Vector3(1.42, 0.45, 0.08), Vector3(0, 1.15, -1.08), Color(0.55, 0.78, 0.88))
 	parent.add_child(obstacle)
 	obstacle_nodes.append(obstacle)
 
@@ -488,6 +543,7 @@ func _end_game() -> void:
 	shop_button.visible = false
 	mission_button.visible = false
 	daily_button.visible = false
+	weather_button.visible = false
 	restart_button.text = "আবার খেলুন"
 	menu_heading.text = "গেম শেষ!"
 
@@ -514,6 +570,7 @@ func _resume_game() -> void:
 	shop_button.visible = true
 	mission_button.visible = true
 	daily_button.visible = true
+	weather_button.visible = true
 
 func _check_distance_breaks() -> void:
 	var milestones := {
@@ -535,6 +592,7 @@ func _check_distance_breaks() -> void:
 			shop_button.visible = false
 			mission_button.visible = false
 			daily_button.visible = false
+			weather_button.visible = false
 			restart_button.text = "এখনই নতুন করে শুরু"
 			pause_button.text = "▶"
 			return
