@@ -1,35 +1,12 @@
 using UnityEngine;
 using UnityEngine.Events;
-
-/// <summary>
-/// Pauses the run at distance milestones. Connect OnBreakStarted to the food-break UI
-/// and call ResumeRun from its Resume button.
-/// </summary>
 public sealed class FoodBreakManager : MonoBehaviour
 {
     [System.Serializable] public class BreakEvent : UnityEvent<int> { }
-
-    [SerializeField] private RunnerController runner;
-    [SerializeField] private BreakEvent onBreakStarted = new BreakEvent();
-    [SerializeField] private UnityEvent onBreakEnded = new UnityEvent();
-
-    public bool IsOnBreak { get; private set; }
-    public BreakEvent OnBreakStarted => onBreakStarted;
-    public UnityEvent OnBreakEnded => onBreakEnded;
-
-    public void BeginBreak(int distanceMetres)
-    {
-        if (IsOnBreak) return;
-        IsOnBreak = true;
-        if (runner != null) runner.SetRunning(false);
-        onBreakStarted.Invoke(distanceMetres);
-    }
-
-    public void ResumeRun()
-    {
-        if (!IsOnBreak) return;
-        IsOnBreak = false;
-        if (runner != null) runner.SetRunning(true);
-        onBreakEnded.Invoke();
-    }
+    [SerializeField] RunnerController runner; [SerializeField] BreakEvent onBreakStarted = new BreakEvent(); [SerializeField] UnityEvent onBreakEnded = new UnityEvent();
+    float previousTimeScale = 1f; public bool IsOnBreak { get; private set; } public BreakEvent OnBreakStarted => onBreakStarted; public UnityEvent OnBreakEnded => onBreakEnded;
+    public void Configure(RunnerController value) { runner = value; }
+    public void BeginBreak(int metres) { if (IsOnBreak) return; IsOnBreak = true; previousTimeScale = Time.timeScale; if (runner != null) runner.SetRunning(false); Time.timeScale = 0f; onBreakStarted.Invoke(metres); }
+    public void ResumeRun() { if (!IsOnBreak) return; Time.timeScale = previousTimeScale > 0f ? previousTimeScale : 1f; if (runner != null) runner.SetRunning(true); IsOnBreak = false; onBreakEnded.Invoke(); }
+    void OnDestroy() { if (IsOnBreak) Time.timeScale = previousTimeScale > 0f ? previousTimeScale : 1f; }
 }
