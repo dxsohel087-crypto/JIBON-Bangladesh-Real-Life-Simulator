@@ -54,6 +54,9 @@ var slide_time := 0.0
 var status_label: Label
 var score_label: Label
 var touch_hint: Label
+var traffic_vehicles: Array[Node3D] = []
+var traffic_wheels: Array[MeshInstance3D] = []
+var traffic_clock := 0.0
 
 func _ready() -> void:
 	randomize()
@@ -71,6 +74,7 @@ func _process(delta: float) -> void:
 		return
 	distance_m += FORWARD_SPEED * delta
 	_update_day_night(delta)
+	_update_traffic(delta)
 	_check_distance_breaks()
 	if paused:
 		return
@@ -149,6 +153,7 @@ func _build_world() -> void:
 	world_environment.environment = environment
 	world_root.add_child(world_environment)
 	_build_rain_effect()
+	_build_traffic()
 
 func _build_rain_effect() -> void:
 	rain_particles = CPUParticles3D.new()
@@ -208,6 +213,38 @@ func _build_player() -> void:
 	skin.albedo_color = Color(0.72, 0.48, 0.32)
 	head.material_override = skin
 	player.add_child(head)
+	# Face details and hair make the runner read more clearly as a person.
+	var hair := MeshInstance3D.new()
+	var hair_mesh := SphereMesh.new()
+	hair_mesh.radius = 0.285
+	hair_mesh.height = 0.30
+	hair.mesh = hair_mesh
+	hair.position = Vector3(0, 1.08, 0.015)
+	var hair_mat := StandardMaterial3D.new()
+	hair_mat.albedo_color = Color(0.055, 0.035, 0.025)
+	hair.material_override = hair_mat
+	player.add_child(hair)
+	for eye_x in [-0.105, 0.105]:
+		var eye := MeshInstance3D.new()
+		var eye_mesh := SphereMesh.new()
+		eye_mesh.radius = 0.035
+		eye_mesh.height = 0.05
+		eye.mesh = eye_mesh
+		eye.position = Vector3(eye_x, 0.91, -0.235)
+		var eye_mat := StandardMaterial3D.new()
+		eye_mat.albedo_color = Color(0.025, 0.02, 0.018)
+		eye.material_override = eye_mat
+		player.add_child(eye)
+	for shoe_x in [-0.2, 0.2]:
+		var shoe := MeshInstance3D.new()
+		var shoe_mesh := BoxMesh.new()
+		shoe_mesh.size = Vector3(0.28, 0.16, 0.42)
+		shoe.mesh = shoe_mesh
+		shoe.position = Vector3(shoe_x, -1.02, -0.08)
+		var shoe_mat := StandardMaterial3D.new()
+		shoe_mat.albedo_color = Color(0.035, 0.035, 0.04)
+		shoe.material_override = shoe_mat
+		player.add_child(shoe)
 
 	left_arm = _make_limb(Vector3(0.48, 0.18, 0), 0.14, 0.72, Color(0.1, 0.22, 0.62))
 	right_arm = _make_limb(Vector3(-0.48, 0.18, 0), 0.14, 0.72, Color(0.1, 0.22, 0.62))
@@ -325,6 +362,43 @@ func _build_hud() -> void:
 	weather_button.pressed.connect(_toggle_rain)
 	menu.add_child(weather_button)
 
+func _build_traffic() -> void:
+	# Decorative traffic stays on the shoulders, away from the three playable lanes.
+	for i in range(4):
+		var vehicle := Node3D.new()
+		vehicle.name = "RoadsideTraffic_%d" % i
+		var body_color := [Color(0.78, 0.16, 0.10), Color(0.12, 0.42, 0.72), Color(0.86, 0.72, 0.12), Color(0.12, 0.52, 0.28)][i]
+		_box(vehicle, Vector3(1.35, 0.72, 2.1), Vector3(0, 0.55, 0), body_color)
+		_box(vehicle, Vector3(1.05, 0.48, 0.95), Vector3(0, 1.08, 0.08), Color(0.45, 0.68, 0.78))
+		for wheel_x in [-0.58, 0.58]:
+			for wheel_z in [-0.65, 0.65]:
+				var wheel := MeshInstance3D.new()
+				var wheel_mesh := CylinderMesh.new()
+				wheel_mesh.top_radius = 0.22
+				wheel_mesh.bottom_radius = 0.22
+				wheel_mesh.height = 0.14
+				wheel.mesh = wheel_mesh
+				wheel.position = Vector3(wheel_x, 0.25, wheel_z)
+				wheel.rotation_degrees.z = 90.0
+				vehicle.add_child(wheel)
+				traffic_wheels.append(wheel)
+		world_root.add_child(vehicle)
+		traffic_vehicles.append(vehicle)
+
+func _update_traffic(delta: float) -> void:
+	traffic_clock += delta
+	for i in range(traffic_vehicles.size()):
+		var vehicle := traffic_vehicles[i]
+		if not is_instance_valid(vehicle):
+			continue
+		var side := -1.0 if i % 2 == 0 else 1.0
+		vehicle.position.x = side * 6.4
+		vehicle.position.z = player.position.z - fposmod(traffic_clock * (3.0 + float(i % 2)), 82.0) - 8.0 - float(i) * 9.0
+		vehicle.rotation.y = 0.0 if side < 0.0 else PI
+	for wheel in traffic_wheels:
+		if is_instance_valid(wheel):
+			wheel.rotation.x += delta * 5.5
+
 func _add_segment(z_pos: float) -> void:
 	var segment := Node3D.new()
 	segment.position.z = z_pos
@@ -388,8 +462,23 @@ func _add_field_props(segment: Node3D, z_pos: float) -> void:
 		# Pond and a simple concrete culvert
 		_box(segment, Vector3(7.0, 0.04, 8.0), Vector3(-10.0, -0.12, -12.0), Color(0.12, 0.42, 0.58))
 		_box(segment, Vector3(4.0, 0.22, 7.0), Vector3(9.0, 0.0, -12.0), Color(0.52, 0.50, 0.43))
+	elif zone == 4:
+		# Dinajpur-inspired town blocks and a short elevated flyover section.
+		for side in [-1, 1]:
+			var x := float(side) * 10.0
+			for building in range(3):
+				var height := 3.5 + float((building + int(absf(z_pos) / SEGMENT_LENGTH)) % 3) * 1.4
+				var bz := -3.0 - float(building) * 7.0
+				_box(segment, Vector3(3.2, height, 3.6), Vector3(x, height * 0.5 - 0.18, bz), Color(0.62, 0.66, 0.68) if building % 2 == 0 else Color(0.72, 0.58, 0.43))
+				for floor_index in range(1, int(height / 1.2)):
+					_box(segment, Vector3(2.65, 0.48, 0.06), Vector3(x, float(floor_index) * 1.2, bz - 1.84), Color(0.22, 0.48, 0.62))
+		# Overhead flyover deck with side rails and concrete piers.
+		_box(segment, Vector3(13.5, 0.42, 5.0), Vector3(0, 4.5, -12.0), Color(0.42, 0.44, 0.46))
+		for side in [-1, 1]:
+			_box(segment, Vector3(0.22, 0.9, 5.0), Vector3(float(side) * 6.55, 5.05, -12.0), Color(0.72, 0.72, 0.68))
+			_box(segment, Vector3(0.55, 4.5, 0.65), Vector3(float(side) * 5.8, 2.0, -12.0), Color(0.48, 0.49, 0.48))
 	else:
-		# Distant homes on the horizon
+		# Distant village homes on the horizon.
 		_box(segment, Vector3(2.2, 2.0, 2.2), Vector3(-8.0, 0.9, -15.0), Color(0.70, 0.52, 0.34))
 		_box(segment, Vector3(2.2, 2.0, 2.2), Vector3(8.0, 0.9, -6.0), Color(0.66, 0.48, 0.30))
 
