@@ -1,0 +1,57 @@
+name: JIBON RUNNER Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'GodotProject/**'
+      - '.github/workflows/android-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  export-android:
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.4.1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install matching Godot export templates
+        run: |
+          mkdir -p "$HOME/.local/share/godot/export_templates/4.4.1.stable"
+          wget -q https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_export_templates.tpz -O /tmp/godot-templates.tpz
+          mkdir -p /tmp/godot-templates
+          unzip -q /tmp/godot-templates.tpz -d /tmp/godot-templates
+          cp /tmp/godot-templates/templates/* "$HOME/.local/share/godot/export_templates/4.4.1.stable/"
+
+      - name: Check Android build tools
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          command -v sdkmanager
+          java -version
+          sdkmanager --licenses </dev/null || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Import and validate Godot project
+        run: godot --headless --editor --path GodotProject --quit
+
+      - name: Export Android APK
+        run: |
+          mkdir -p GodotProject/build/android
+          godot --headless --path GodotProject --export-debug "Android" build/android/JIBON-RUNNER.apk
+
+      - name: Verify APK
+        run: |
+          test -s GodotProject/build/android/JIBON-RUNNER.apk
+          ls -lh GodotProject/build/android/JIBON-RUNNER.apk
+          file GodotProject/build/android/JIBON-RUNNER.apk
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: JIBON-RUNNER-Android-APK
+          path: GodotProject/build/android/JIBON-RUNNER.apk
+          if-no-files-found: error
