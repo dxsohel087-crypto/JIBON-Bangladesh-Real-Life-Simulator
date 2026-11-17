@@ -1,25 +1,21 @@
 # JIBON RUNNER — জীবন রানার
 
-বাংলাদেশের গ্রাম, বাজার ও রাস্তার অনুপ্রেরণায় Android 3D endless runner.
+বাংলাদেশের গ্রাম, বাজার, শহর ও রাস্তার অনুপ্রেরণায় 3D endless runner গেম।
 
-## এই ধাপে যোগ হয়েছে
-- তিন লেনের দৌড়, swipe/keyboard control, jump এবং slide.
-- দূরত্ব ও ৫/১০/১৫/২০ কিমি food-break event.
-- খাবারের বিরতিতে পুরো গেমের simulation pause.
-- কয়েন, বাধা, score এবং best-distance save.
-- Unity Editor থেকে starter scene তৈরি এবং Android build method.
-- Runtime prototype: endless road segments, green fields, village houses/trees, player placeholder, obstacles, coins এবং HUD.
+## নতুন মূল ইঞ্জিন: Godot
+এখন থেকে নতুন গেম ডেভেলপমেন্ট হবে `GodotProject/` ফোল্ডারে Godot 4 দিয়ে। Unity Personal License আর এই নতুন প্রজেক্টের জন্য প্রয়োজন নেই। পুরোনো Unity প্রোটোটাইপের ফাইলগুলো আপাতত রেফারেন্স হিসেবে রাখা হয়েছে; Godot প্রজেক্ট যাচাই না হওয়া পর্যন্ত সেগুলো মুছে ফেলা হবে না।
 
-## Unity version
-Unity 2022.3.62f1
+## Godot প্রোটোটাইপ
+- তিন লেনের দৌড়, টাচ swipe ও keyboard control
+- লাফ, স্লাইড, কয়েন সংগ্রহ ও বাধায় ধাক্কা লাগলে Game Over
+- procedural road segments, সবুজ মাঠ, গাছ ও সাধারণ গ্রামের বাড়ি
+- স্কোর ও দূরত্বের HUD
 
-## Starter scene
-1. Unity 2022.3.62f1 দিয়ে project খুলুন।
-2. Package import শেষ হলে Menu থেকে JIBON RUNNER > Create Starter Scene নির্বাচন করুন।
-3. Assets/Scenes/JibonRunner.unity খুলে Play চাপুন।
+## ফোনে পরীক্ষা
+GitHub Actions থেকে `JIBON RUNNER Web Demo` workflow চালিয়ে Web export artifact তৈরি করার ব্যবস্থা যোগ করা হয়েছে। এটি Android Chrome-এ প্রাথমিক gameplay পরীক্ষা করতে সাহায্য করবে। Web demo চূড়ান্ত Android APK নয়।
 
-## GitHub Actions দিয়ে APK
-Repository Settings > Secrets and variables > Actions-এ UNITY_LICENSE নামে Unity Personal/Pro license file-এর secret যোগ করতে হবে। তারপর Actions tab থেকে JIBON RUNNER Android APK workflow manually চালু করুন। সফল হলে workflow artifact-এ APK থাকবে। License secret ছাড়া build চালানো যাবে না।
+## Android APK
+Godot Android export-এর জন্য export templates, Android SDK/JDK ও signing configuration সঠিকভাবে সেট করতে হবে। এগুলো আলাদা build workflow-এ যুক্ত করে APK তৈরি ও বাস্তব ফোনে পরীক্ষা করা হবে। APK তৈরি হয়েছে—এমন দাবি করা হচ্ছে না।
 
-## সত্যিকারের বর্তমান অবস্থা
-এটি প্রথম playable-prototype foundation, final game নয়। Runtime environment এখন primitive placeholder; photorealistic character/vehicle/building models, real animation, Bengali font asset, licensed ambience/audio, full menus, performance optimization এবং Android device test এখনো বাকি। APK তৈরি বা পরীক্ষা হয়েছে—এমন দাবি করা হচ্ছে না।
+## পরবর্তী কাজ
+বাস্তবসম্মত বাংলাদেশি 3D assets, চরিত্রের animation, বাস/ট্রাক/রিকশা/ট্রেন, দিন-রাত/আবহাওয়া, খাবারের বিরতি (৫/১০/১৫/২০ কিমি), বাংলা UI, sound design, save system, Android export ও device QA।
