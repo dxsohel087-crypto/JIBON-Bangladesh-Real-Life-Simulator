@@ -23,8 +23,6 @@ public sealed class JibonRunnerBootstrap : MonoBehaviour
     void MakeWorld()
     {
         for (int i=0;i<12;i++) SpawnRoadSegment();
-        for(int i=0;i<28;i++) { float z=i*12f+8f; Tree(new Vector3(-9,0,z)); Tree(new Vector3(9,0,z+4)); if(i%4==0) House(new Vector3(i%8==0?-15:15,0,z+2)); }
-        
     }
     void MaintainEndlessRoad()
     {
@@ -49,8 +47,8 @@ public sealed class JibonRunnerBootstrap : MonoBehaviour
         if(Random.value>.72f) House(new Vector3(Random.value>.5f?-15f:15f,0f,nextRoadZ+15f),segment.transform);
         nextRoadZ += 30f;
     }
-    void Tree(Vector3 p, Transform parent = null) { GameObject t=GameObject.CreatePrimitive(PrimitiveType.Cylinder); t.transform.position=p+Vector3.up*1.2f; t.transform.localScale=new Vector3(.35f,1.2f,.35f); t.GetComponent<Renderer>().material=house; t.GetComponent<Collider>().enabled=false; if(parent!=null)t.transform.SetParent(parent,true); GameObject c=GameObject.CreatePrimitive(PrimitiveType.Sphere); c.transform.position=p+Vector3.up*3f; c.transform.localScale=Vector3.one*2.5f; c.GetComponent<Renderer>().material=grass; c.GetComponent<Collider>().enabled=false; }
-    void House(Vector3 p) { Cube("Village house",p+Vector3.up*1.1f,new Vector3(4,2.2f,5),house); Cube("Tin roof",p+Vector3.up*2.35f,new Vector3(4.5f,.35f,5.5f),hazard); }
+    void Tree(Vector3 p, Transform parent = null) { GameObject t=GameObject.CreatePrimitive(PrimitiveType.Cylinder); t.transform.position=p+Vector3.up*1.2f; t.transform.localScale=new Vector3(.35f,1.2f,.35f); t.GetComponent<Renderer>().material=house; t.GetComponent<Collider>().enabled=false; if(parent!=null)t.transform.SetParent(parent,true); GameObject c=GameObject.CreatePrimitive(PrimitiveType.Sphere); c.transform.position=p+Vector3.up*3f; c.transform.localScale=Vector3.one*2.5f; c.GetComponent<Renderer>().material=grass; c.GetComponent<Collider>().enabled=false; if(parent!=null)c.transform.SetParent(parent,true); }
+    void House(Vector3 p, Transform parent = null) { GameObject h=Cube("Village house",p+Vector3.up*1.1f,new Vector3(4,2.2f,5),house); GameObject roof=Cube("Tin roof",p+Vector3.up*2.35f,new Vector3(4.5f,.35f,5.5f),hazard); if(parent!=null){h.transform.SetParent(parent,true);roof.transform.SetParent(parent,true);} }
     void MakePlayer() { GameObject p=GameObject.CreatePrimitive(PrimitiveType.Capsule); p.name="Player"; p.transform.position=new Vector3(0,1,4); Destroy(p.GetComponent<CapsuleCollider>()); CharacterController cc=p.AddComponent<CharacterController>(); cc.height=1.8f; cc.radius=.42f; cc.center=new Vector3(0,.9f,0); p.GetComponent<Renderer>().material=human; runner=p.AddComponent<RunnerController>(); }
     void MakeCamera() { GameObject g=new GameObject("Runner Camera"); Camera c=g.AddComponent<Camera>(); c.fieldOfView=68; g.AddComponent<AudioListener>(); g.transform.position=runner.transform.position+new Vector3(0,5.5f,-9); g.AddComponent<RunnerCameraFollow>().Configure(runner.transform); RenderSettings.ambientLight=new Color(.6f,.64f,.7f); GameObject l=new GameObject("Sun"); l.AddComponent<Light>().type=LightType.Directional; l.transform.rotation=Quaternion.Euler(48,-30,0); }
     void MakeSystems() { GameObject g=new GameObject("Game Systems"); distance=g.AddComponent<DistanceTracker>(); distance.Configure(runner.transform); breaks=g.AddComponent<FoodBreakManager>(); breaks.Configure(runner); session=g.AddComponent<RunnerGameSession>(); session.Configure(runner,distance,breaks); breaks.OnBreakStarted.AddListener(_=>breakPanel.SetActive(true)); session.OnGameOver.AddListener(_=>{overPanel.SetActive(true);}); }
