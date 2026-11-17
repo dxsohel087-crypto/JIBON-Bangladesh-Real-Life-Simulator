@@ -15,12 +15,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Import Godot project
+
+      - name: Install matching Godot export templates
+        run: |
+          mkdir -p "$HOME/.local/share/godot/export_templates/4.4.1.stable"
+          wget -q https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_export_templates.tpz -O /tmp/godot-templates.tpz
+          mkdir -p /tmp/godot-templates
+          unzip -q /tmp/godot-templates.tpz -d /tmp/godot-templates
+          cp /tmp/godot-templates/templates/* "$HOME/.local/share/godot/export_templates/4.4.1.stable/"
+
+      - name: Import and validate Godot project
         run: godot --headless --editor --path GodotProject --quit
+
       - name: Export Web build
         run: |
           mkdir -p build/web
           godot --headless --path GodotProject --export-release "Web" build/web/index.html
+
       - name: Upload Web demo
         uses: actions/upload-artifact@v4
         with:
