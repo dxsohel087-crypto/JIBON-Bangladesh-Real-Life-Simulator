@@ -29,12 +29,12 @@ jobs:
 
       - name: Export Web build
         run: |
-          mkdir -p build/web
+          mkdir -p GodotProject/build/web
           godot --headless --path GodotProject --export-release "Web" build/web/index.html
 
       - name: Upload Web demo
         uses: actions/upload-artifact@v4
         with:
           name: JIBON-RUNNER-Web-Demo
-          path: build/web/
+          path: GodotProject/build/web/
           if-no-files-found: error
