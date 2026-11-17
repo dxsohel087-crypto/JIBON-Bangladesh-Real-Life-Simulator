@@ -16,11 +16,12 @@ Godot 4.4.1 দিয়ে `GodotProject` ফোল্ডার খুলে `Scen
 - সবুজ ধানক্ষেতের আবহ, গাছ ও সাধারণ গ্রামের বাড়ি।
 - swipe controls, jump/slide, coin pickup, obstacle collision।
 - Score, distance, current coins, best score ও lifetime coin counter।
-- Pause/resume/restart menu।
+- Pause/resume/restart menu ও ৫/১০/১৫/২০ কিমিতে একবার করে খাবার/পানি/বিশ্রামের বিরতি।
+- দৌড়ানোর সময় হাত-পায়ের procedural swing animation।
 - Best score ও মোট কয়েন user://jibon_runner_save.cfg-এ সংরক্ষণ।
 
 ## এখনো বাকি
-বাস্তবসম্মত character model/animation, বাংলাদেশি যানবাহন ও বিভিন্ন অঞ্চল, sound/music, ৫/১০/১৫/২০ কিমিতে আলাদা breakfast/food/rest gameplay, main menu, cosmetic shop, missions, daily rewards, day/night/weather cycle, আরও obstacle/coin pattern, accessibility/settings, performance profiling এবং বাস্তব Android device testing।
+বাস্তবসম্মত character model/animation, বাংলাদেশি যানবাহন ও বিভিন্ন অঞ্চল, sound/music, আলাদা 3D breakfast/food/rest location ও interactive food gameplay, main menu, cosmetic shop, missions, daily rewards, day/night/weather cycle, আরও obstacle/coin pattern, accessibility/settings, performance profiling এবং বাস্তব Android device testing।
 
 ## Android build
 GitHub Actions-এর JIBON RUNNER Android APK workflow APK export ও verify করে। সফল run-এর Artifacts অংশ থেকে APK ZIP ডাউনলোড করা যাবে।
