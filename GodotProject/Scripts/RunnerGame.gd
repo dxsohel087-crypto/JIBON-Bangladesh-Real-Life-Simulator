@@ -35,6 +35,12 @@ var sun_light: DirectionalLight3D
 var world_environment: WorldEnvironment
 var day_clock := 0.0
 var break_scene: Node3D
+var shop_button: Button
+var mission_button: Button
+var daily_button: Button
+var player_body: MeshInstance3D
+var skin_index := 0
+var daily_claim_day := 0
 var swipe_start := Vector2.ZERO
 var segments: Array[Node3D] = []
 var coin_nodes: Array[Area3D] = []
@@ -144,15 +150,15 @@ func _build_player() -> void:
 	player.name = "Player"
 	player.position = Vector3(0, PLAYER_BASE_Y, 0)
 	add_child(player)
-	var body := MeshInstance3D.new()
+	player_body = MeshInstance3D.new()
 	var capsule := CapsuleMesh.new()
 	capsule.radius = 0.42
 	capsule.height = 1.8
-	body.mesh = capsule
+	player_body.mesh = capsule
 	var material := StandardMaterial3D.new()
-	material.albedo_color = Color(0.12, 0.25, 0.72)
-	body.material_override = material
-	player.add_child(body)
+	material.albedo_color = _skin_color()
+	player_body.material_override = material
+	player.add_child(player_body)
 	var player_collision := CollisionShape3D.new()
 	var player_shape := CapsuleShape3D.new()
 	player_shape.radius = 0.42
@@ -265,6 +271,21 @@ func _build_hud() -> void:
 	restart_button.custom_minimum_size = Vector2(260, 58)
 	restart_button.pressed.connect(func(): get_tree().reload_current_scene())
 	menu.add_child(restart_button)
+	shop_button = Button.new()
+	shop_button.text = "চরিত্রের পোশাকের দোকান"
+	shop_button.custom_minimum_size = Vector2(260, 48)
+	shop_button.pressed.connect(_open_shop)
+	menu.add_child(shop_button)
+	mission_button = Button.new()
+	mission_button.text = "মিশন ও লক্ষ্য"
+	mission_button.custom_minimum_size = Vector2(260, 48)
+	mission_button.pressed.connect(_show_missions)
+	menu.add_child(mission_button)
+	daily_button = Button.new()
+	daily_button.text = "দৈনিক পুরস্কার"
+	daily_button.custom_minimum_size = Vector2(260, 48)
+	daily_button.pressed.connect(_claim_daily_reward)
+	menu.add_child(daily_button)
 
 func _add_segment(z_pos: float) -> void:
 	var segment := Node3D.new()
@@ -463,6 +484,9 @@ func _end_game() -> void:
 	pause_button.visible = false
 	pause_overlay.visible = true
 	resume_button.visible = false
+	shop_button.visible = false
+	mission_button.visible = false
+	daily_button.visible = false
 	restart_button.text = "আবার খেলুন"
 	menu_heading.text = "গেম শেষ!"
 
@@ -486,6 +510,9 @@ func _resume_game() -> void:
 	menu_heading.text = "JIBON RUNNER"
 	resume_button.visible = true
 	restart_button.text = "আবার শুরু"
+	shop_button.visible = true
+	mission_button.visible = true
+	daily_button.visible = true
 
 func _check_distance_breaks() -> void:
 	var milestones := {
@@ -504,9 +531,50 @@ func _check_distance_breaks() -> void:
 			menu_heading.text = milestones[milestone]
 			resume_button.text = "বিরতি শেষ — চালিয়ে যান"
 			resume_button.visible = true
+			shop_button.visible = false
+			mission_button.visible = false
+			daily_button.visible = false
 			restart_button.text = "এখনই নতুন করে শুরু"
 			pause_button.text = "▶"
 			return
+
+func _skin_color() -> Color:
+	var colors := [Color(0.12, 0.25, 0.72), Color(0.12, 0.48, 0.28), Color(0.62, 0.16, 0.12), Color(0.12, 0.12, 0.16)]
+	return colors[skin_index % colors.size()]
+
+func _open_shop() -> void:
+	if total_coins >= 100:
+		total_coins -= 100
+		skin_index = (skin_index + 1) % 4
+		player_body.material_override.albedo_color = _skin_color()
+		_save_progress()
+		menu_heading.text = "নতুন পোশাক নেওয়া হয়েছে!"
+	else:
+		menu_heading.text = "নতুন পোশাকের দাম ১০০ কয়েন"
+	resume_button.text = "ফিরে যান"
+	resume_button.visible = true
+
+func _show_missions() -> void:
+	var distance_goal := clampf(distance_m / 1000.0, 0.0, 1.0)
+	var coin_goal := clampf(float(coins) / 20.0, 0.0, 1.0)
+	menu_heading.text = "মিশন: ১ কিমি %.0f%% | ২০ কয়েন %.0f%%" % [distance_goal * 100.0, coin_goal * 100.0]
+	resume_button.text = "ফিরে যান"
+	resume_button.visible = true
+
+func _claim_daily_reward() -> void:
+	var date := Time.get_date_dict_from_system()
+	var today := int(date.year) * 10000 + int(date.month) * 100 + int(date.day)
+	if daily_claim_day == today:
+		menu_heading.text = "আজকের পুরস্কার নেওয়া হয়েছে"
+	else:
+		daily_claim_day = today
+		total_coins += 50
+		coins += 50
+		_save_progress()
+		menu_heading.text = "দৈনিক পুরস্কার: +৫০ কয়েন!"
+	_update_hud()
+	resume_button.text = "ফিরে যান"
+	resume_button.visible = true
 
 func _create_break_scene(milestone: int) -> void:
 	if is_instance_valid(break_scene):
@@ -548,9 +616,13 @@ func _load_progress() -> void:
 	if save.load("user://jibon_runner_save.cfg") == OK:
 		best_score = int(save.get_value("progress", "best_score", 0))
 		total_coins = int(save.get_value("progress", "total_coins", 0))
+		skin_index = int(save.get_value("progress", "skin_index", 0))
+		daily_claim_day = int(save.get_value("progress", "daily_claim_day", 0))
 
 func _save_progress() -> void:
 	var save := ConfigFile.new()
 	save.set_value("progress", "best_score", best_score)
 	save.set_value("progress", "total_coins", total_coins)
+	save.set_value("progress", "skin_index", skin_index)
+	save.set_value("progress", "daily_claim_day", daily_claim_day)
 	save.save("user://jibon_runner_save.cfg")
