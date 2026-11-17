@@ -1,0 +1,29 @@
+name: JIBON RUNNER Web Demo
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'GodotProject/**'
+      - '.github/workflows/godot-web-demo.yml'
+
+jobs:
+  export-web:
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.4.1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Import Godot project
+        run: godot --headless --editor --path GodotProject --quit
+      - name: Export Web build
+        run: |
+          mkdir -p build/web
+          godot --headless --path GodotProject --export-release "Web" build/web/index.html
+      - name: Upload Web demo
+        uses: actions/upload-artifact@v4
+        with:
+          name: JIBON-RUNNER-Web-Demo
+          path: build/web/
+          if-no-files-found: error
